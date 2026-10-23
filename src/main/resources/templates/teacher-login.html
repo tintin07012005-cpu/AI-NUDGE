@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Người quản trị - AI-Nudge</title><link rel="stylesheet" href="/style.css">
+</head>
+<body class="center">
+  <div class="panel narrow">
+    <h1>Người quản trị</h1>
+    <p class="muted">Nhập mật khẩu để xem các câu trả lời của học sinh.</p>
+    <form th:action="@{/teacher/login}" method="post">
+      <input type="password" name="password" placeholder="Mật khẩu" autofocus required>
+      <p class="err" th:if="${error}" th:text="${error}"></p>
+      <button class="btn primary" type="submit" style="width:100%">Đăng nhập</button>
+    </form>
+    <p class="muted small" style="text-align:center"><a href="/">Về trang học sinh</a></p>
+  </div>
+</body>
+</html>

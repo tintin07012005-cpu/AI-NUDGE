@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-AiNudgeApplication<ai-nudge-lite>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "vn.ainudge.AiNudgeApplication",
+            "projectName": "ai-nudge-lite",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

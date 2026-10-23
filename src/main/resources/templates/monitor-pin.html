@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ban cán sự - AI-Nudge</title><link rel="stylesheet" href="/style.css">
+</head>
+<body class="center">
+  <div class="panel narrow">
+    <h1>Ban cán sự</h1>
+    <p class="muted">Nhập mã PIN do người quản trị đưa để nhập nhiệm vụ và xác nhận bài nộp.</p>
+    <form th:action="@{/monitor/pin}" method="post">
+      <input type="password" name="pin" placeholder="Mã PIN" autofocus required>
+      <p class="err" th:if="${error}" th:text="${error}"></p>
+      <button class="btn primary" type="submit" style="width:100%">Mở trang ban cán sự</button>
+    </form>
+    <p class="muted small" style="text-align:center"><a href="/student">Về trang trò chuyện</a></p>
+  </div>
+</body>
+</html>

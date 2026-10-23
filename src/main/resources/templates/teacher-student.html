@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Người quản trị - AI-Nudge</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top staff-top"><b>AI-Nudge · Người quản trị</b>
+  <div class="t-actions">
+    <a href="/teacher" class="btn">← Danh sách</a>
+    <a th:href="@{/teacher/student/{id}/export.xlsx(id=${student.id})}" class="btn">⬇ Tải file Excel của học sinh này</a>
+    <form th:action="@{/logout}" method="post"><button class="link">Đăng xuất</button></form>
+  </div>
+</header>
+
+<main class="wide">
+  <h1>Học sinh: <span th:text="${student.name}"></span></h1>
+
+  <section class="panel">
+    <h2>Từng nhiệm vụ</h2>
+    <p class="empty" th:if="${progress.isEmpty()}">Chưa có nhiệm vụ nào.</p>
+    <div class="scroll-x" th:unless="${progress.isEmpty()}">
+    <table>
+      <tr><th>Nhiệm vụ</th><th>Hạn nộp</th><th>Trạng thái</th><th>Giờ hẹn / nơi làm</th><th>Điều khiến chưa bắt đầu</th><th>Lý do hoãn</th>
+          <th>Em ấy kể đã làm</th><th>Báo đã nộp</th><th>Ảnh minh chứng</th><th>BCS xác nhận</th><th>Kết quả</th></tr>
+      <tr th:each="p : ${progress}">
+        <td th:text="${p.task()}"></td>
+        <td th:text="${p.deadline()}"></td>
+        <td th:text="${p.status()}"></td>
+        <td th:text="${p.plan()}"></td>
+        <td th:text="${p.barrier()}"></td>
+        <td th:text="${p.postpone()}"></td>
+        <td th:text="${p.proof()}"></td>
+        <td th:text="${p.selfSubmitted()}"></td>
+        <td>
+          <a th:each="iid : ${p.images()}" th:href="@{/proof/{id}/file(id=${iid})}" target="_blank">
+            <img class="thumb" th:src="@{/proof/{id}/file(id=${iid})}" alt="Ảnh minh chứng"></a>
+          <span class="muted small" th:if="${p.images().isEmpty()}">—</span>
+        </td>
+        <td th:text="${p.confirmed()}"></td>
+        <td><b th:text="${p.result()}"></b></td>
+      </tr>
+    </table>
+    </div>
+  </section>
+
+  <p class="empty" th:if="${convs.isEmpty()}">Học sinh này chưa trò chuyện lần nào.</p>
+  <section class="panel" th:each="c : ${convs}">
+    <h2>Trò chuyện lúc <span th:text="${c.time()}"></span></h2>
+    <table>
+      <tr><th style="width:42%">Câu hỏi của trợ lý</th><th>Học sinh trả lời</th></tr>
+      <tr th:each="q : ${c.qa()}">
+        <td th:text="${q.question()}"></td>
+        <td><b th:text="${q.answer()}"></b></td>
+      </tr>
+    </table>
+    <details>
+      <summary>Xem toàn bộ cuộc trò chuyện</summary>
+      <div class="transcript">
+        <div th:each="m : ${c.chat()}" th:class="'msg ' + ${m.sender() == 'STUDENT' ? 'me' : 'bot'} + ' ' + ${m.kind()}">
+          <span class="tag" th:if="${m.kind() == 'nudge'}">💡 Cú hích</span>
+          <span th:text="${m.text()}"></span>
+        </div>
+      </div>
+    </details>
+  </section>
+</main>
+</body>
+</html>

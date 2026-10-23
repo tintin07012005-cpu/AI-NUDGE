@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xác nhận nộp bài - AI-Nudge</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top staff-top"><b>AI-Nudge · Ban cán sự</b>
+  <div class="t-actions"><a class="nav" th:href="@{/monitor}">← Danh sách nhiệm vụ</a></div>
+</header>
+
+<main class="wide">
+  <section class="panel">
+    <h2 th:text="${task}"></h2>
+    <p class="muted">Hạn nộp: <b th:text="${deadline}"></b></p>
+    <div class="thumbs" th:if="${!taskImages.isEmpty()}" style="margin-bottom:10px">
+      <a th:each="iid : ${taskImages}" th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank">
+        <img class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
+    </div>
+    <p class="muted small">Bấm vào ảnh để xem to. Hãy bấm "Xác nhận" ngay khi bạn thật sự nhận được bài của bạn đó. Hệ thống lấy giờ bạn bấm làm giờ nộp để đánh giá nộp sớm, đúng hạn hay trễ.</p>
+    <div class="scroll-x">
+    <table>
+      <tr><th>Học sinh</th><th>Trạng thái trên web</th><th>Em ấy kể đã làm</th><th>Báo đã nộp</th><th>Ảnh minh chứng</th><th>Xác nhận của bạn</th></tr>
+      <tr th:each="r : ${rows}">
+        <td><b th:text="${r.name()}"></b></td>
+        <td th:text="${r.status()}"></td>
+        <td th:text="${r.proof()}"></td>
+        <td><span th:text="${r.selfSubmitted()} ? 'Có' : 'Không'"></span></td>
+        <td>
+          <a th:each="iid : ${r.images()}" th:href="@{/proof/{id}/file(id=${iid})}" target="_blank">
+            <img class="thumb" th:src="@{/proof/{id}/file(id=${iid})}" alt="Ảnh minh chứng"></a>
+          <span class="muted small" th:if="${r.images().isEmpty()}">Chưa có ảnh</span>
+        </td>
+        <td>
+          <span class="pill ok" th:if="${r.confirmed()}" th:text="'Đã nộp ' + ${r.confirmedAt()}"></span>
+          <form th:action="@{/monitor/task/{id}/confirm(id=${taskId})}" method="post" class="inline-form">
+            <input type="hidden" name="studentId" th:value="${r.studentId()}">
+            <input type="hidden" name="value" th:value="${!r.confirmed()}">
+            <button class="btn sm" th:classappend="${r.confirmed()} ? 'danger' : 'primary'"
+                    th:text="${r.confirmed()} ? 'Bỏ xác nhận' : 'Xác nhận đã nộp'"></button>
+          </form>
+        </td>
+      </tr>
+    </table>
+    </div>
+  </section>
+</main>
+<script>
+/* Word hiển thị dưới dạng liên kết thay vì ảnh bị hỏng. */
+document.querySelectorAll('a[href*="/task-image/"]').forEach(async a => {
+  try {
+    const r = await fetch(a.href, {method:'HEAD'});
+    if ((r.headers.get('content-type') || '').includes('wordprocessingml')) {
+      a.replaceChildren(document.createTextNode('📄 Xem Word'));
+      a.classList.add('word-link');
+      a.setAttribute('download', 'de-bai.docx');
+    }
+  } catch (e) { /* vẫn giữ liên kết tải tệp */ }
+});
+</script>
+</body>
+</html>

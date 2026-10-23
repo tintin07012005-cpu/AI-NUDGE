@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-Nudge</title><link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#6c5ce7">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">✨</span><b>AI-Nudge</b></div>
+  <span class="hello">Xin chào, <b th:text="${name}"></b></span>
+  <a class="nav" th:if="${monitor}" th:href="@{/monitor}">📋 Ban cán sự</a>
+  <form th:action="@{/logout}" method="post" class="inline"><button class="link">Đăng xuất</button></form>
+</header>
+
+<div class="notices">
+  <div id="notifBanner" class="notice warn" hidden>
+    <span id="notifText"></span>
+    <button class="btn primary sm" id="notifBtn" type="button" hidden>Cho phép thông báo</button>
+  </div>
+  <div id="emailBar" class="notice" th:if="${!hasEmail}">
+    <span>📧 Thêm email để Nudge nhắc bạn cả qua email:</span>
+    <input type="email" id="emailInput" placeholder="email của bạn" maxlength="150">
+    <button class="btn primary sm" id="emailOk" type="button">Lưu</button>
+    <small id="emailMsg"></small>
+  </div>
+</div>
+
+<main class="app single">
+  <section class="chat-panel">
+    <div class="chat-head">
+      <div class="avatar">N</div>
+      <div><b>Nudge</b><small>Trợ lý nhắc nhở nhẹ nhàng · không giải bài, không chấm điểm</small></div>
+      <span class="online" title="Đang online"></span>
+    </div>
+    <div id="loadProgress" class="load-progress" role="status" aria-live="polite" hidden>
+      <div class="load-track"><div id="loadBar" class="load-bar" style="width:0%"></div></div>
+      <span id="loadPercent">Đang tải dữ liệu · 0%</span>
+    </div>
+    <div id="taskbar"></div>
+    <div id="chat"></div>
+    <div id="opts"></div>
+    <div id="timeRow" hidden>
+      <input type="time" id="timeInput"><button class="btn primary" id="timeOk">OK</button>
+    </div>
+    <div id="photoRow" hidden>
+      <div class="photo-pick">
+        <label class="btn" for="photoFiles">📷 Chọn ảnh</label>
+        <input type="file" id="photoFiles" accept="image/*" multiple hidden>
+        <span class="muted small" id="photoInfo">Chọn một hoặc nhiều ảnh</span>
+        <button class="btn primary" id="photoOk" type="button" disabled>Gửi ảnh</button>
+      </div>
+      <div id="photoPrev" class="thumbs"></div>
+    </div>
+    <div id="textRow" hidden>
+      <input type="text" id="textInput" maxlength="300" placeholder="Gõ vài chữ rồi bấm Gửi...">
+      <button class="btn primary" id="textOk">Gửi</button>
+    </div>
+  </section>
+</main>
+<div id="alarm" hidden role="alertdialog" aria-live="assertive">
+  <div class="alarm-card">
+    <div class="rings"><span></span><span></span><span></span><div class="bellbig">🔔</div></div>
+    <h2 id="alarmTitle">Đến giờ làm bài rồi!</h2>
+    <p id="alarmText"></p>
+    <div class="alarm-btns" id="alarmBtns"></div>
+  </div>
+</div>
+<div id="taskModal" hidden>
+  <div class="box">
+    <button class="close" id="taskModalClose" aria-label="Đóng">✕</button>
+    <h3 id="tmTitle"></h3>
+    <p class="muted small" id="tmInfo"></p>
+    <div class="imgs" id="tmImgs"></div>
+  </div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

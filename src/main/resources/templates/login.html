@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-Nudge</title><link rel="stylesheet" href="/style.css">
+</head>
+<body class="center">
+  <div class="panel narrow">
+    <div class="hero"><div class="big">✨</div><h1>AI-Nudge</h1></div>
+    <p class="muted" style="text-align:center">Trợ lý nhỏ giúp bạn bắt đầu bài vở dễ hơn.</p>
+
+    <div class="tabs">
+      <button type="button" id="tab-login" class="tab" onclick="show('login')">Đăng nhập</button>
+      <button type="button" id="tab-register" class="tab" onclick="show('register')">Đăng ký</button>
+    </div>
+
+    <form id="f-login" th:action="@{/login}" method="post">
+      <input name="name" type="text" placeholder="Email (hoặc tên trong danh sách lớp)" maxlength="150" autocomplete="username" required>
+      <input type="password" name="password" placeholder="Mật khẩu" maxlength="20" autocomplete="current-password" required>
+      <p class="err" th:if="${error != null and mode != 'register'}" th:text="${error}"></p>
+      <button class="btn primary" type="submit" style="width:100%">Bắt đầu trò chuyện 🚀</button>
+    </form>
+
+    <form id="f-register" th:action="@{/register}" method="post" hidden>
+      <input name="name" placeholder="Tên của bạn" maxlength="60" th:value="${regName}" autocomplete="name" required>
+      <input name="email" type="email" placeholder="Email" maxlength="150" th:value="${regEmail}" autocomplete="email" required>
+      <input type="password" name="password" placeholder="Mật khẩu (4–20 ký tự)" minlength="4" maxlength="20" autocomplete="new-password" required>
+      <input type="password" name="password2" placeholder="Nhập lại mật khẩu" minlength="4" maxlength="20" autocomplete="new-password" required>
+      <p class="err" th:if="${error != null and mode == 'register'}" th:text="${error}"></p>
+      <button class="btn primary" type="submit" style="width:100%">Tạo tài khoản ✨</button>
+    </form>
+
+    <p class="muted small" style="text-align:center"><a href="/teacher/login">Dành cho người quản trị</a></p>
+  </div>
+
+  <script th:inline="javascript">
+    function show(m) {
+      document.getElementById('f-login').hidden = m !== 'login';
+      document.getElementById('f-register').hidden = m !== 'register';
+      document.getElementById('tab-login').classList.toggle('on', m === 'login');
+      document.getElementById('tab-register').classList.toggle('on', m === 'register');
+    }
+    const MODE = /*[[${mode}]]*/ 'login';
+    show(MODE === 'register' ? 'register' : 'login');
+  </script>
+</body>
+</html>
