@@ -827,7 +827,7 @@ public class ChatService {
         if ("PAUSE_WHY".equals(c.step)) {
             List<Opt> o = new ArrayList<>();
             o.add(new Opt("Đang mệt", "tired"));
-            o.add(new Opt("Bí bài, cần nghỉ để nghĩ", "hard"));
+            o.add(new Opt("Bí bài, mình cần nghỉ ngơi một chút để suy nghĩ", "hard"));
             o.add(new Opt("Có việc gấp phải làm", "busy"));
             o.add(new Opt("Chán, mất tập trung", "bored"));
             o.add(new Opt("Lý do khác (mình tự gõ)", "other"));
