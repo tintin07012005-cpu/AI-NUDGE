@@ -4,7 +4,7 @@ import jakarta.servlet.http.HttpSession;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -20,7 +20,10 @@ import vn.ainudge.repo.StudentRepository;
 import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.service.ProofService;
 
-/** Xem ảnh minh chứng (chỉ người quản trị, ban cán sự đã nhập PIN và chính học sinh gửi ảnh) và ảnh đề bài (mọi người đã đăng nhập). */
+/**
+ * Xem ảnh minh chứng (chỉ người quản trị, ban cán sự đã nhập PIN và chính học
+ * sinh gửi ảnh) và ảnh đề bài (mọi người đã đăng nhập).
+ */
 @Controller
 public class ProofController {
     private final ProofImageRepository images;
@@ -29,7 +32,7 @@ public class ProofController {
     private final TaskImageRepository taskImages;
 
     public ProofController(ProofImageRepository images, StudentRepository students, ProofService proof,
-                           TaskImageRepository taskImages) {
+            TaskImageRepository taskImages) {
         this.images = images;
         this.taskImages = taskImages;
         this.students = students;
@@ -39,7 +42,8 @@ public class ProofController {
     @GetMapping("/proof/{id}/file")
     public ResponseEntity<Resource> file(@PathVariable Long id, HttpSession session) {
         ProofImage im = images.findById(id).orElse(null);
-        if (im == null) return ResponseEntity.notFound().build();
+        if (im == null)
+            return ResponseEntity.notFound().build();
 
         boolean ok = session.getAttribute("teacher") != null;
         if (!ok && session.getAttribute("studentId") != null) {
@@ -50,34 +54,42 @@ public class ProofController {
                 ok = owner || monitor;
             }
         }
-        if (!ok) return ResponseEntity.status(403).build();
+        if (!ok)
+            return ResponseEntity.status(403).build();
 
-        Path p = proof.path(im);
-        if (!Files.exists(p)) return ResponseEntity.notFound().build();
+        byte[] data = proof.bytes(im.fileName, im.cloudUrl);
+        if (data == null)
+            return ResponseEntity.notFound().build();
         return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType(im.contentType))
-            .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
-            .header("X-Content-Type-Options", "nosniff")
-            .body(new FileSystemResource(p));
+                .contentType(MediaType.parseMediaType(im.contentType))
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new ByteArrayResource(data));
     }
 
-    /** Ảnh đề bài do ban cán sự gửi: mọi học sinh đã đăng nhập và người quản trị đều xem được. */
+    /**
+     * Ảnh đề bài do ban cán sự gửi: mọi học sinh đã đăng nhập và người quản trị đều
+     * xem được.
+     */
     @GetMapping("/task-image/{id}/file")
     public ResponseEntity<Resource> taskFile(@PathVariable Long id, HttpSession session) {
         TaskImage im = taskImages.findById(id).orElse(null);
-        if (im == null) return ResponseEntity.notFound().build();
+        if (im == null)
+            return ResponseEntity.notFound().build();
 
         boolean ok = session.getAttribute("teacher") != null;
         if (!ok && session.getAttribute("studentId") != null)
             ok = students.existsById((Long) session.getAttribute("studentId"));
-        if (!ok) return ResponseEntity.status(403).build();
+        if (!ok)
+            return ResponseEntity.status(403).build();
 
-        Path p = proof.path(im);
-        if (!Files.exists(p)) return ResponseEntity.notFound().build();
+        byte[] data = proof.bytes(im.fileName, im.cloudUrl);
+        if (data == null)
+            return ResponseEntity.notFound().build();
         return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType(im.contentType))
-            .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
-            .header("X-Content-Type-Options", "nosniff")
-            .body(new FileSystemResource(p));
+                .contentType(MediaType.parseMediaType(im.contentType))
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new ByteArrayResource(data));
     }
 }
