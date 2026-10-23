@@ -51,7 +51,15 @@ public class Script {
             "Một việc nhỏ được làm ngay sẽ hữu ích hơn một kế hoạch còn để đó.",
             "Bạn đã quay lại với bài học, hãy tiếp tục từ bước đang dang dở.",
             "Tương lai của bạn được quyết định bởi những gì bạn làm hôm nay, chứ không phải ngày mai.",
-            "Bạn không cần phải hoàn hảo mỗi ngày, bạn chỉ cần tốt hơn phiên bản của chính mình ngày hôm qua 1% thôi."
+            "Bạn không cần phải hoàn hảo mỗi ngày, bạn chỉ cần tốt hơn phiên bản của chính mình ngày hôm qua 1% thôi.",
+            "Mỗi trang bài bạn làm hôm nay là một viên gạch xây nên ngày mai của bạn.",
+            "Bắt đầu là bước khó nhất. Bạn đã ở đây rồi, chỉ cần đi thêm một bước nữa thôi.",
+            "Không ai giỏi ngay từ đầu. Người giỏi chỉ là người đã bắt đầu sớm hơn và không bỏ cuộc.",
+            "Làm xong một việc nhỏ cũng đáng để tự hào về bản thân.",
+            "Hôm nay bạn cố gắng thêm một chút, ngày mai bạn sẽ nhẹ nhõm hơn rất nhiều.",
+            "Bạn mạnh mẽ hơn bạn nghĩ. Cứ bắt đầu rồi đà sẽ đến.",
+            "Mỗi lần bạn chọn làm bài thay vì né tránh, bạn đang rèn luyện kỷ luật cho chính mình.",
+            "Đừng so sánh với người khác, hãy so sánh với chính bạn của hôm qua."
     };
     /** Khi gặp bài khó, bí bài. */
     private static final String[] Q_HARD = {
@@ -60,7 +68,13 @@ public class Script {
             "Đừng nhìn vào cả bài toán lớn mà sợ. Hãy bẻ nhỏ nó ra, giải quyết từng dòng, từng bước một.",
             "Những người giỏi nhất cũng từng có lúc không giải được bài. Sự khác biệt là họ chọn không dừng lại.",
             "Gặp bài khó không có nghĩa là bạn không làm được.",
-            "Chưa hiểu ở đâu thì hỏi đúng chỗ đó, nhờ hỗ trợ cũng là một năng lực."
+            "Chưa hiểu ở đâu thì hỏi đúng chỗ đó, nhờ hỗ trợ cũng là một năng lực.",
+            "Câu khó hôm nay sẽ là câu dễ của ngày mai, nếu hôm nay bạn chịu thử.",
+            "Sai một lần không đáng sợ. Điều đáng tiếc là không dám thử lần thứ hai.",
+            "Bí bài là lúc não đang học điều mới. Cứ kiên nhẫn thêm chút nữa nhé.",
+            "Không hiểu ngay không có nghĩa là bạn kém. Nó chỉ có nghĩa là bạn cần thêm một cách giải thích khác.",
+            "Chia bài khó thành những bước nhỏ, bạn sẽ thấy nó không còn đáng sợ như lúc đầu.",
+            "Hỏi một câu hôm nay còn hơn thắc mắc suốt cả tuần."
     };
     /** Khi chán nản, mệt, muốn bỏ cuộc. */
     private static final String[] Q_TIRED = {
@@ -70,7 +84,13 @@ public class Script {
             "Tương lai của bạn được quyết định bởi những gì bạn làm hôm nay, chứ không phải ngày mai.",
             "Bạn không cần phải hoàn hảo mỗi ngày, bạn chỉ cần tốt hơn phiên bản của chính mình ngày hôm qua 1% thôi.",
             "Nghỉ ngơi hợp lý cũng là một phần của việc học.",
-            "Tiến chậm không sao; quan trọng là chọn nhịp phù hợp với mình."
+            "Tiến chậm không sao; quan trọng là chọn nhịp phù hợp với mình.",
+            "Mệt là tín hiệu để nghỉ, không phải lý do để bỏ cuộc. Nghỉ xong mình đi tiếp nhé.",
+            "Cả những người giỏi nhất cũng có ngày mệt. Họ khác ở chỗ vẫn quay lại sau khi nghỉ.",
+            "Chỉ cần một bước nhỏ cũng đủ để ngày hôm nay không trôi qua vô ích.",
+            "Bạn đã cố gắng nhiều rồi. Hít một hơi thật sâu, rồi làm tiếp từng chút một.",
+            "Đường dài nào cũng cần những lần dừng chân. Quan trọng là bạn vẫn đang đi.",
+            "Sức mạnh thật sự không phải là không bao giờ mệt, mà là mệt rồi vẫn quay lại."
     };
     /** Khi mất tập trung, xao nhãng, chán. */
     private static final String[] Q_FOCUS = {
@@ -79,14 +99,24 @@ public class Script {
             "Đừng để những niềm vui nhất thời trước mắt cướp đi tương lai rực rỡ phía sau.",
             "Kỷ luật là cầu nối giữa mục tiêu và thành tựu. Hãy tắt thông báo, bật chế độ tập trung ngay bây giờ!",
             "Bạn không cần có hứng ngay; hãy thử một bước nhỏ trước.",
-            "Để lấy lại nhịp, chỉ cần bắt đầu từ một việc đơn giản."
+            "Để lấy lại nhịp, chỉ cần bắt đầu từ một việc đơn giản.",
+            "Tắt thông báo đi, 25 phút nữa thôi, bạn sẽ ngạc nhiên vì mình làm được nhiều thế nào.",
+            "Điện thoại luôn ở đó đợi bạn. Bài vở thì cần bạn ngay bây giờ.",
+            "Mỗi lần bạn kéo sự chú ý về bài học là một lần bạn thắng chính mình.",
+            "Tập trung là một kỹ năng, và kỹ năng thì luyện được mỗi ngày.",
+            "Chỉ cần 5 phút không nhìn điện thoại, bạn đã đi nhanh hơn một nửa quãng đường.",
+            "Hãy cho bài học 100% sự chú ý trong 25 phút, rồi thưởng cho mình một khoảng nghỉ."
     };
     /** Khi bận việc khác, cần hẹn lại. */
     private static final String[] Q_BUSY = {
             "Một kế hoạch vừa sức giúp bạn dễ quay lại hơn.",
             "Chưa làm được ngay thì chọn một thời điểm thực tế để bắt đầu.",
             "Khoảng cách giữa ước mơ và hiện thực được gọi là hành động.",
-            "Một việc nhỏ được làm ngay sẽ hữu ích hơn một kế hoạch còn để đó."
+            "Một việc nhỏ được làm ngay sẽ hữu ích hơn một kế hoạch còn để đó.",
+            "Việc gấp thì cứ làm trước. Xong rồi quay lại với bài học, mình vẫn ở đây chờ bạn.",
+            "Sắp xếp thời gian khéo léo cũng là một kỹ năng quan trọng của người học giỏi.",
+            "Chọn đúng giờ rồi giữ lời hứa với chính mình, đó mới là điều quan trọng.",
+            "Dù bận đến đâu, chỉ cần dành 10 phút mỗi ngày cho bài học cũng tạo nên khác biệt lớn."
     };
 
     private static String[] concat(String[]... groups) {
@@ -122,6 +152,73 @@ public class Script {
                         : (RND.nextBoolean() ? first : second);
         lastStartQuote = selected;
         return selected;
+    }
+
+    // ------------------------------------------------------------------
+    // LỜI TRUYỀN ĐỘNG LỰC NGAY SAU MỖI LẦN HỌC SINH NÓI / BẤM CHỌN
+    // (ChatService gọi hàm này trước khi trả lời, nên học sinh nói gì cũng được
+    // động viên)
+    // ------------------------------------------------------------------
+    private static final java.util.Map<Integer, Integer> lastPreIndex = new java.util.HashMap<>();
+
+    private static String[] poolForReason(String reason) {
+        if (reason == null)
+            return Q_GENERAL;
+        return switch (reason) {
+            case "hard" -> Q_HARD;
+            case "tired" -> Q_TIRED;
+            case "bored" -> Q_FOCUS;
+            case "busy" -> Q_BUSY;
+            default -> Q_GENERAL;
+        };
+    }
+
+    private static String pickFrom(String[] pool) {
+        int key = System.identityHashCode(pool);
+        int prev = lastPreIndex.getOrDefault(key, -1);
+        int index = RND.nextInt(pool.length);
+        if (pool.length > 1 && index == prev)
+            index = (index + 1 + RND.nextInt(pool.length - 1)) % pool.length;
+        lastPreIndex.put(key, index);
+        return pool[index];
+    }
+
+    /**
+     * Trả về một câu động viên đúng tình huống, hoặc null nếu bước này không cần
+     * (ví dụ bước chọn giờ đã có câu riêng).
+     */
+    public static synchronized String preQuote(String step, String value, String lastReason) {
+        if (step == null)
+            return null;
+        String v = value == null ? "" : value;
+        String[] pool;
+        switch (step) {
+            case "BARRIER" -> {
+                pool = switch (v) {
+                    case "big", "start" -> Q_HARD;
+                    case "phone" -> Q_FOCUS;
+                    case "tired" -> Q_TIRED;
+                    case "forget" -> Q_BUSY;
+                    default -> Q_GENERAL;
+                };
+            }
+            case "BARRIER_OTHER", "PLACE_OTHER" -> pool = Q_GENERAL;
+            case "DUE" -> pool = "help".equals(v) ? Q_HARD : Q_GENERAL;
+            case "DOING" -> {
+                if (!"stop".equals(v))
+                    return null; // "làm xong" đã có lời khen riêng
+                pool = Q_TIRED;
+            }
+            case "PAUSE", "PAUSE_TIME", "POSTPONE_PLAN", "POSTPONE_COMMIT" -> {
+                if ("back".equals(v))
+                    return null;
+                pool = poolForReason(lastReason);
+            }
+            default -> {
+                return null;
+            }
+        }
+        return pickFrom(pool);
     }
 
     static String boost() {
