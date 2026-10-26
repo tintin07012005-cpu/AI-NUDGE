@@ -399,7 +399,7 @@ public class ChatService {
         }
 
         // (2) sắp đến hạn (trong vòng 60 phút) mà chưa xong
-        for (Task t : todayTasks()) {
+        for (Task t : todayTasks(s)) {
             if (!t.deadline.isAfter(now) || t.deadline.isAfter(now.plusMinutes(60)))
                 continue;
             TaskProgress p = progressFor(t, s);
@@ -468,7 +468,7 @@ public class ChatService {
     /** Thanh nhiệm vụ hôm nay hiện cho học sinh. */
     public List<TaskChip> chips(Student s) {
         List<TaskChip> list = new ArrayList<>();
-        for (Task t : todayTasks()) {
+        for (Task t : todayTasks(s)) {
             TaskProgress p = progressFor(t, s);
             String st = p.confirmed ? "CONFIRMED" : p.status;
             list.add(new TaskChip(Script.label(t), t.deadline.format(DM), Script.timeLeft(t), st,
@@ -487,7 +487,7 @@ public class ChatService {
      */
     private void intro(Conversation c, List<Msg> out, Student s, boolean first) {
         c.currentTaskId = null;
-        List<Task> today = todayTasks();
+        List<Task> today = todayTasks(s);
         if (today.isEmpty()) {
             bot(c, out, Script.noTasks(), "normal");
             c.step = "NO_TASK";
@@ -505,7 +505,7 @@ public class ChatService {
 
     private void pick(Conversation c, List<Msg> out, Student s, String value) {
         Task t = tasks.findById(parseLong(value)).orElse(null);
-        if (t == null || !t.active) {
+        if (t == null || !t.active || !t.visibleTo(s)) {
             bot(c, out, "Mình chưa tìm thấy nhiệm vụ đó, bạn chọn lại nhé.", "normal");
             return;
         }
@@ -802,7 +802,9 @@ public class ChatService {
             Task t = tasks.findById(c.currentTaskId).orElse(null);
             if (t == null || !t.active)
                 why = "Nhiệm vụ bạn đang làm đã bị xóa hoặc thay đổi, nên mình bắt đầu lại với danh sách nhiệm vụ mới nhé.";
-        } else if ("NO_TASK".equals(c.step) && !todayTasks().isEmpty()) {
+            else if (!t.visibleTo(s))
+                why = "Nhiệm vụ này không còn trong danh sách lớp của bạn, nên mình bắt đầu lại với danh sách nhiệm vụ mới nhé.";
+        } else if ("NO_TASK".equals(c.step) && !todayTasks(s).isEmpty()) {
             why = "Có nhiệm vụ mới rồi nhé!";
         }
         if (why == null)
@@ -847,7 +849,7 @@ public class ChatService {
     private List<Opt> options(Conversation c) {
         if ("PICK".equals(c.step)) {
             List<Opt> o = new ArrayList<>();
-            for (TaskProgress p : pending(c.student, todayTasks()))
+            for (TaskProgress p : pending(c.student, todayTasks(c.student)))
                 o.add(new Opt(Script.label(p.task) + " (hạn " + p.task.deadline.format(HM) + ")",
                         String.valueOf(p.task.id)));
             return o;
@@ -1042,6 +1044,18 @@ public class ChatService {
      */
     private List<Task> todayTasks() {
         return tasks.findByActiveTrueAndDeadlineAfterOrderByDeadlineAsc(LocalDate.now().atStartOfDay());
+    }
+
+    /**
+     * Nhiệm vụ hôm nay của RIÊNG học sinh này: chỉ những nhiệm vụ được giao cho lớp
+     * của em (hoặc giao cho tất cả).
+     */
+    private List<Task> todayTasks(Student s) {
+        List<Task> mine = new ArrayList<>();
+        for (Task t : todayTasks())
+            if (t.visibleTo(s))
+                mine.add(t);
+        return mine;
     }
 
     private List<TaskProgress> pending(Student s, List<Task> today) {

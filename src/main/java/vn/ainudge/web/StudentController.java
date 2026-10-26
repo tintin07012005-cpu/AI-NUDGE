@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import vn.ainudge.dto.Reply;
 import vn.ainudge.dto.TaskChip;
+import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Student;
+import vn.ainudge.repo.ClassRoomRepository;
 import vn.ainudge.repo.StudentRepository;
 import vn.ainudge.service.ChatService;
 import vn.ainudge.service.NotifyService;
@@ -27,11 +29,15 @@ public class StudentController {
     private final ChatService chat;
     private final NotifyService notify;
     private final PresenceTracker presence;
+    private final ClassRoomRepository classRooms;
 
     /**
-     * Mỗi học sinh một khóa: trình duyệt vừa hỏi định kỳ (poll) vừa gửi câu trả lời (answer),
-     * nếu hai yêu cầu chạy song song thì yêu cầu này có thể ghi đè kết quả của yêu cầu kia
-     * (mất lượt hoãn, nhắc sai giờ, hỏi lại câu cũ). Khóa đặt ở đây để bao trọn cả phần lưu dữ liệu.
+     * Mỗi học sinh một khóa: trình duyệt vừa hỏi định kỳ (poll) vừa gửi câu trả lời
+     * (answer),
+     * nếu hai yêu cầu chạy song song thì yêu cầu này có thể ghi đè kết quả của yêu
+     * cầu kia
+     * (mất lượt hoãn, nhắc sai giờ, hỏi lại câu cũ). Khóa đặt ở đây để bao trọn cả
+     * phần lưu dữ liệu.
      */
     private static final ConcurrentHashMap<Long, Object> LOCKS = new ConcurrentHashMap<>();
 
@@ -40,7 +46,8 @@ public class StudentController {
     }
 
     public StudentController(StudentRepository students, ChatService chat, NotifyService notify,
-                             PresenceTracker presence) {
+            PresenceTracker presence, ClassRoomRepository classRooms) {
+        this.classRooms = classRooms;
         this.students = students;
         this.chat = chat;
         this.notify = notify;
@@ -57,7 +64,27 @@ public class StudentController {
         model.addAttribute("name", s.name);
         model.addAttribute("monitor", s.monitor);
         model.addAttribute("hasEmail", s.email != null && !s.email.isBlank());
+        List<ClassRoom> classList = classRooms.findAllByOrderByNameAsc();
+        model.addAttribute("className", s.classRoom == null ? null : s.classRoom.name);
+        model.addAttribute("classes", classList);
+        model.addAttribute("needClass", s.classRoom == null && !classList.isEmpty()); // chưa vào lớp nào: hiện ô chọn
+                                                                                      // lớp
         return "student";
+    }
+
+    /**
+     * Học sinh tự ghi danh vào lớp (chỉ khi chưa có lớp; muốn đổi lớp thì nhờ người
+     * quản trị).
+     */
+    @PostMapping("/class")
+    public String joinClass(@RequestParam Long classId, HttpSession session) {
+        Student s = current(session);
+        if (s.classRoom == null)
+            classRooms.findById(classId).ifPresent(c -> {
+                s.classRoom = c;
+                students.save(s);
+            });
+        return "redirect:/student";
     }
 
     /** Trình duyệt gọi khi mở trang: lấy lịch sử + lời chào của trợ lý. */
@@ -75,8 +102,8 @@ public class StudentController {
     @PostMapping("/api/answer")
     @ResponseBody
     public Reply answer(@RequestParam String value,
-                        @RequestParam(required = false) String label,
-                        HttpSession session) {
+            @RequestParam(required = false) String label,
+            HttpSession session) {
         Student s = current(session);
         synchronized (lockOf(s)) {
             return chat.answer(s, value, label);
@@ -101,7 +128,9 @@ public class StudentController {
         return chat.chips(current(session));
     }
 
-    /** Học sinh gửi ảnh minh chứng (nhiều ảnh) ở bước "làm xong" trong khung chat. */
+    /**
+     * Học sinh gửi ảnh minh chứng (nhiều ảnh) ở bước "làm xong" trong khung chat.
+     */
     @PostMapping("/api/photo")
     @ResponseBody
     public Reply photo(@RequestParam("files") List<MultipartFile> files, HttpSession session) {
@@ -122,7 +151,7 @@ public class StudentController {
     @PostMapping("/api/push/subscribe")
     @ResponseBody
     public boolean pushSubscribe(@RequestParam String endpoint, @RequestParam String p256dh,
-                                 @RequestParam String auth, HttpSession session) {
+            @RequestParam String auth, HttpSession session) {
         return notify.subscribe(current(session), endpoint, p256dh, auth);
     }
 

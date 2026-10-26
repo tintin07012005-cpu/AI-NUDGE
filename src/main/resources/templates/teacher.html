@@ -1,186 +1,339 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Người quản trị - AI-Nudge</title><link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Người quản trị - AI-Nudge</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
+
 <body>
-<header class="top staff-top"><b>AI-Nudge · Người quản trị</b>
-  <div class="t-actions">
-    <a href="/teacher/accounts.xlsx" class="btn">Tải mật khẩu học sinh (Excel)</a>
-    <a href="/teacher/progress.xlsx" class="btn">Tải bảng nộp bài cả nhóm (Excel)</a>
-    <a href="/teacher/export.xlsx" class="btn">Tải câu trả lời cả nhóm (Excel)</a>
-    <form th:action="@{/logout}" method="post"><button class="link">Đăng xuất</button></form>
-  </div>
-</header>
-
-<main class="wide">
-  <p class="msgbox" th:if="${msg}" th:text="${msg}"></p>
-  <section class="stats">
-    <div class="stat s1"><b th:text="${total}">0</b><span>Học sinh trong hệ thống</span></div>
-    <div class="stat s2"><b th:text="${today}">0</b><span>Học sinh vào hôm nay</span></div>
-    <div class="stat s3"><b th:text="${taskCount}">0</b><span>Nhiệm vụ đang theo dõi</span></div>
-    <div class="stat s4"><b th:text="${confirmedTotal}">0</b><span>Bài ban cán sự đã xác nhận</span></div>
-  </section>
-
-  <section class="panel">
-    <h2>Nhiệm vụ do ban cán sự nhập</h2>
-    <p class="empty" th:if="${tasks.isEmpty()}">Chưa có nhiệm vụ nào. Hãy chỉ định ban cán sự ở bảng bên dưới để các bạn nhập nhiệm vụ.</p>
-    <div class="scroll-x" th:unless="${tasks.isEmpty()}">
-    <table>
-      <tr><th>Nhiệm vụ</th><th>Ảnh đề</th><th>Hạn nộp</th><th>Người nhập</th><th>Đã bắt đầu</th><th>Báo xong</th><th>BCS xác nhận</th><th></th></tr>
-      <tr th:each="t : ${tasks}">
-        <td th:text="${t.label()}"></td>
-        <td>
-          <a th:each="iid : ${t.images()}" th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank">
-            <img class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
-          <span class="muted" th:if="${t.images().isEmpty()}">—</span>
-        </td>
-        <td th:text="${t.deadline()}"></td>
-        <td th:text="${t.creator()}"></td>
-        <td th:text="${t.started()} + ' / ' + ${t.total()}"></td>
-        <td th:text="${t.done()} + ' / ' + ${t.total()}"></td>
-        <td th:text="${t.confirmed()} + ' / ' + ${t.total()}"></td>
-        <td><form th:action="@{/teacher/task/{id}/delete(id=${t.id()})}" method="post" class="inline-form"
-                  onsubmit="return confirm('Xóa hẳn nhiệm vụ này và tiến độ của nó?')"><button class="btn sm danger">Xóa</button></form></td>
-      </tr>
-    </table>
+  <header class="top staff-top"><b>AI-Nudge · Người quản trị</b>
+    <div class="t-actions">
+      <a href="/teacher/accounts.xlsx" class="btn">Tải mật khẩu học sinh (Excel)</a>
+      <a href="/teacher/progress.xlsx" class="btn">Tải bảng nộp bài cả nhóm (Excel)</a>
+      <a href="/teacher/export.xlsx" class="btn">Tải câu trả lời cả nhóm (Excel)</a>
+      <form th:action="@{/logout}" method="post"><button class="link">Đăng xuất</button></form>
     </div>
-  </section>
+  </header>
 
-  <section class="panel">
-    <h2>Chuyện hoãn việc</h2>
-    <p class="muted small">Mỗi khi học sinh bấm hoãn, trợ lý hỏi lý do và đưa gợi ý phù hợp. Số liệu này giúp cô biết nên hỗ trợ ai và hỗ trợ chuyện gì.</p>
-    <p class="empty" th:if="${postponeAll == 0}">Chưa có học sinh nào bấm hoãn.</p>
-    <div th:unless="${postponeAll == 0}">
-      <div class="scroll-x">
-      <table>
-        <tr><th>Lý do muốn hoãn</th><th>Số lần</th><th></th><th>Hoãn vào lúc</th><th>Số lần</th></tr>
-        <tr th:each="i : ${#numbers.sequence(0, statRows - 1)}">
-          <td th:text="${i lt reasonStats.size()} ? ${reasonStats[i].label()} : ''"></td>
-          <td><b th:text="${i lt reasonStats.size()} ? ${reasonStats[i].count()} : ''"></b></td><td></td>
-          <td th:text="${i lt bandStats.size()} ? ${bandStats[i].label()} : ''"></td>
-          <td><b th:text="${i lt bandStats.size()} ? ${bandStats[i].count()} : ''"></b></td>
-        </tr>
-      </table>
+  <main class="wide">
+    <p class="msgbox" th:if="${msg}" th:text="${msg}"></p>
+    <section class="stats">
+      <div class="stat s1"><b th:text="${total}">0</b><span>Học sinh trong hệ thống</span></div>
+      <div class="stat s2"><b th:text="${today}">0</b><span>Học sinh vào hôm nay</span></div>
+      <div class="stat s3"><b th:text="${taskCount}">0</b><span>Nhiệm vụ đang theo dõi</span></div>
+      <div class="stat s4"><b th:text="${confirmedTotal}">0</b><span>Bài ban cán sự đã xác nhận</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>Nhiệm vụ do ban cán sự nhập</h2>
+      <p class="muted small">Nhiệm vụ được xếp theo lớp. Nhiệm vụ giao cho nhiều lớp sẽ hiện ở từng lớp đó; bấm Xóa ở
+        đâu thì xóa hẳn nhiệm vụ.</p>
+      <p class="empty" th:if="${tasks.isEmpty()}">Chưa có nhiệm vụ nào. Hãy chỉ định ban cán sự ở bảng bên dưới để các
+        bạn nhập nhiệm vụ.</p>
+      <div th:unless="${tasks.isEmpty()}">
+        <div th:each="g : ${taskGroups}" class="class-group" style="margin-top:14px">
+          <h3>🏫 <span th:text="${g.title()}"></span> <span class="muted small"
+              th:text="'(' + ${g.tasks().size()} + ' nhiệm vụ)'"></span></h3>
+          <p class="empty" th:if="${g.tasks().isEmpty()}">Lớp này chưa có nhiệm vụ nào.</p>
+          <div class="scroll-x" th:unless="${g.tasks().isEmpty()}">
+            <table>
+              <tr>
+                <th>Nhiệm vụ</th>
+                <th>Ảnh đề</th>
+                <th>Hạn nộp</th>
+                <th>Người nhập</th>
+                <th>Lớp được giao</th>
+                <th>Đã bắt đầu</th>
+                <th>Báo xong</th>
+                <th>BCS xác nhận</th>
+                <th></th>
+              </tr>
+              <tr th:each="t : ${g.tasks()}">
+                <td th:text="${t.label()}"></td>
+                <td>
+                  <a th:each="iid : ${t.images()}" th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank">
+                    <img class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
+                  <span class="muted" th:if="${t.images().isEmpty()}">—</span>
+                </td>
+                <td th:text="${t.deadline()}"></td>
+                <td th:text="${t.creator()}"></td>
+                <td>
+                  <span th:text="${t.classes()}"></span>
+                  <details th:if="${!classes.isEmpty()}">
+                    <summary class="muted small" style="cursor:pointer">Sửa lớp</summary>
+                    <form th:action="@{/teacher/task/{id}/classes(id=${t.id()})}" method="post">
+                      <label th:each="c : ${classes}" style="display:block;margin:2px 0"><input type="checkbox"
+                          name="classIds" th:value="${c.id}" th:checked="${t.classIds().contains(c.id)}"> <span
+                          th:text="${c.name}"></span></label>
+                      <button class="btn sm primary" type="submit">Lưu</button> <small class="muted">Bỏ chọn hết = tất
+                        cả học sinh</small>
+                    </form>
+                  </details>
+                </td>
+                <td th:text="${t.started()} + ' / ' + ${t.total()}"></td>
+                <td th:text="${t.done()} + ' / ' + ${t.total()}"></td>
+                <td th:text="${t.confirmed()} + ' / ' + ${t.total()}"></td>
+                <td>
+                  <form th:action="@{/teacher/task/{id}/delete(id=${t.id()})}" method="post" class="inline-form"
+                    onsubmit="return confirm('Xóa hẳn nhiệm vụ này và tiến độ của nó?')"><button
+                      class="btn sm danger">Xóa</button></form>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
       </div>
-      <h3 style="margin-top:14px">Các bạn hay hoãn nhất</h3>
-      <div class="scroll-x">
-      <table>
-        <tr><th>Học sinh</th><th>Tổng lần hoãn</th><th>Lý do hay gặp</th></tr>
-        <tr th:each="p : ${postponers}">
-          <td><a th:href="@{/teacher/student/{id}(id=${p.id()})}" th:text="${p.name()}"></a></td>
-          <td th:text="${p.total()}"></td>
-          <td th:text="${p.reasons()}"></td>
-        </tr>
-      </table>
-      </div>
-    </div>
-    <div th:if="${!helpReqs.isEmpty()}">
-      <h3 style="margin-top:14px">🙋 Các bạn bấm "Mình cần được giúp"</h3>
-      <div class="scroll-x">
-      <table>
-        <tr><th>Học sinh</th><th>Nhiệm vụ</th></tr>
-        <tr th:each="h : ${helpReqs}">
-          <td><a th:href="@{/teacher/student/{id}(id=${h.id()})}" th:text="${h.name()}"></a></td>
-          <td th:text="${h.task()}"></td>
-        </tr>
-      </table>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <h2>Học sinh</h2>
-    <form th:action="@{/teacher/passwords/fill}" method="post" class="inline-form" style="margin-bottom:8px"><button class="btn sm">Cấp mật khẩu cho các bạn chưa có</button></form>
-    <p class="muted small">Bấm vào tên để xem chi tiết. "Nộp sớm / đúng hạn / trễ / chưa nộp" dựa trên việc <b>ban cán sự xác nhận</b>, không chỉ dựa vào lời học sinh.</p>
-    <p class="empty" th:if="${rows.isEmpty()}">Chưa có học sinh nào. Hãy thêm danh sách lớp ở ô bên dưới. Mỗi học sinh mới thêm sẽ được cấp một mật khẩu; bạn xem ở cột "Mật khẩu" hoặc tải file Excel để gửi cho các em.</p>
-    <div class="scroll-x" th:unless="${rows.isEmpty()}">
-    <table>
-      <tr><th>Học sinh</th><th>Lần gần nhất</th><th>Đã bắt đầu</th><th>Báo xong</th><th>BCS xác nhận</th>
-          <th>Nộp sớm</th><th>Đúng hạn</th><th>Trễ</th><th>Chưa nộp</th><th>Ban cán sự</th><th>Mật khẩu</th><th>Tải file</th><th></th></tr>
-      <tr th:each="r : ${rows}">
-        <td><a th:href="@{/teacher/student/{id}(id=${r.id()})}" th:text="${r.name()}"></a>
-            <span class="pill mon" th:if="${r.monitor()}">BCS</span></td>
-        <td th:text="${r.lastTime()}"></td>
-        <td th:text="${r.started()}"></td>
-        <td th:text="${r.done()}"></td>
-        <td th:text="${r.confirmed()}"></td>
-        <td th:text="${r.early()}"></td>
-        <td th:text="${r.onTime()}"></td>
-        <td th:text="${r.late()}"></td>
-        <td th:text="${r.missing()}"></td>
-        <td>
-          <form th:action="@{/teacher/student/{id}/monitor(id=${r.id()})}" method="post" class="inline-form">
-            <button class="btn sm" th:classappend="${r.monitor()} ? 'danger' : ''" th:text="${r.monitor()} ? 'Bỏ' : 'Chọn'"></button>
-          </form>
-        </td>
-        <td><form th:action="@{/teacher/student/{id}/password(id=${r.id()})}" method="post" class="pwform">
-          <input name="password" th:value="${passwords[r.id()]}" maxlength="20" placeholder="Chưa có" autocomplete="off">
-          <button class="btn sm primary" type="submit" title="Lưu mật khẩu đang gõ">Lưu</button>
-          <button class="btn sm" type="submit" name="random" value="1" title="Tạo mật khẩu ngẫu nhiên">🎲</button>
- </form></td>
-        <td><a class="btn sm" th:href="@{/teacher/student/{id}/export.xlsx(id=${r.id()})}" title="Tải file Excel riêng của học sinh này">⬇ Excel</a></td>
-        <td><form th:action="@{/teacher/student/{id}/delete(id=${r.id()})}" method="post" class="inline-form"
-                  onsubmit="return confirm('Xóa học sinh này và toàn bộ dữ liệu của em?')"><button class="btn sm danger">Xóa</button></form></td>
-      </tr>
-    </table>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>Thêm danh sách lớp</h2>
-    <p class="muted small">Mỗi dòng một học sinh. Muốn tự đặt mật khẩu thì viết <b>Tên, mật khẩu</b> (ví dụ: <i>Nguyễn Văn An, abc123</i>); không ghi thì hệ thống tự cấp. Muốn học sinh nhận lời nhắc qua email thì viết thêm email: <i>Nguyễn Văn An, abc123, an@gmail.com</i>. Tên đã có sẽ được bỏ qua. Học sinh đăng nhập bằng đúng tên và mật khẩu ở đây.</p>
-    <form th:action="@{/teacher/roster}" method="post">
-      <textarea name="names" placeholder="Nguyễn Văn An&#10;Trần Thị Bình, binh2026&#10;..."></textarea>
-      <p><button class="btn primary" type="submit">Thêm vào danh sách</button></p>
-    </form>
-  </section>
-
-
-  <section class="panel security-panel">
-    <h2>🔐 Bảo mật tài khoản</h2>
-    <p class="muted small">Đổi mật khẩu quản trị hoặc mã PIN của ban cán sự. Cần nhập giá trị hiện tại để xác nhận.</p>
-    <div class="security-grid">
-      <form action="/teacher/security/change" method="post" autocomplete="off">
-        <h3>Đổi mật khẩu quản trị viên</h3>
-        <input type="hidden" name="kind" value="admin">
-        <label>Mật khẩu hiện tại<input type="password" name="oldValue" required autocomplete="current-password"></label>
-        <label>Mật khẩu mới (ít nhất 8 ký tự)<input type="password" name="newValue" minlength="8" maxlength="100" required autocomplete="new-password"></label>
-        <label>Nhập lại mật khẩu mới<input type="password" name="confirmValue" minlength="8" maxlength="100" required autocomplete="new-password"></label>
-        <button class="btn primary" type="submit">Lưu mật khẩu</button>
+    <section class="panel">
+      <h2>🏫 Lớp học</h2>
+      <p class="muted small">Tạo lớp trước. Học sinh chọn lớp khi đăng ký (hoặc tự ghi danh sau khi vào web), hoặc bạn
+        xếp lớp ở bảng "Học sinh" bên dưới và ở ô "Thêm danh sách lớp". Mỗi nhiệm vụ giao cho một hoặc nhiều lớp; học
+        sinh lớp khác sẽ không thấy.</p>
+      <form th:action="@{/teacher/class}" method="post" class="pwform" style="margin-bottom:10px">
+        <input name="name" placeholder="Tên lớp (ví dụ: 10A1)" maxlength="60" required autocomplete="off">
+        <button class="btn primary sm" type="submit">＋ Tạo lớp</button>
       </form>
-      <form action="/teacher/security/change" method="post" autocomplete="off">
-        <h3>Đổi mã PIN ban cán sự</h3>
-        <input type="hidden" name="kind" value="monitor">
-        <label>PIN hiện tại<input type="password" name="oldValue" inputmode="numeric" required></label>
-        <label>PIN mới (4–12 chữ số)<input type="password" name="newValue" inputmode="numeric" pattern="[0-9]{4,12}" required></label>
-        <label>Nhập lại PIN mới<input type="password" name="confirmValue" inputmode="numeric" pattern="[0-9]{4,12}" required></label>
-        <button class="btn primary" type="submit">Lưu mã PIN</button>
-      </form>
-    </div>
-  </section>
+      <p class="empty" th:if="${classRows.isEmpty()}">Chưa có lớp nào. Khi chưa có lớp, mọi học sinh thấy mọi nhiệm vụ
+        như trước.</p>
+      <div class="scroll-x" th:unless="${classRows.isEmpty()}">
+        <table>
+          <tr>
+            <th>Lớp</th>
+            <th>Số học sinh</th>
+            <th></th>
+          </tr>
+          <tr th:each="c : ${classRows}">
+            <td th:text="${c.name()}"></td>
+            <td th:text="${c.students()}"></td>
+            <td>
+              <form th:action="@{/teacher/class/{id}/delete(id=${c.id()})}" method="post" class="inline-form"
+                onsubmit="return confirm('Xóa lớp này? Học sinh trong lớp sẽ trở thành chưa có lớp.')"><button
+                  class="btn sm danger">Xóa</button></form>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
 
-  <section class="panel">
-    <h2>Dọn dữ liệu</h2>
-    <p class="muted small">Xóa toàn bộ nhiệm vụ, tiến độ và các cuộc trò chuyện (giữ lại danh sách học sinh). Dùng khi muốn bắt đầu lại sạch sẽ.</p>
-    <form th:action="@{/teacher/reset}" method="post" onsubmit="return confirm('Chắc chắn xóa toàn bộ nhiệm vụ và trò chuyện?')">
-      <button class="btn danger" type="submit">Xóa toàn bộ nhiệm vụ và trò chuyện</button>
-    </form>
-  </section>
-</main>
-<script>
-/* Word hiển thị dưới dạng liên kết thay vì ảnh bị hỏng. */
-document.querySelectorAll('a[href*="/task-image/"]').forEach(async a => {
-  try {
-    const r = await fetch(a.href, {method:'HEAD'});
-    if ((r.headers.get('content-type') || '').includes('wordprocessingml')) {
-      a.replaceChildren(document.createTextNode('📄 Xem Word'));
-      a.classList.add('word-link');
-      a.setAttribute('download', 'de-bai.docx');
-    }
-  } catch (e) { /* vẫn giữ liên kết tải tệp */ }
-});
-</script>
+    <section class="panel">
+      <h2>Học sinh</h2>
+      <form th:action="@{/teacher/passwords/fill}" method="post" class="inline-form" style="margin-bottom:8px"><button
+          class="btn sm">Cấp mật khẩu cho các bạn chưa có</button></form>
+      <p class="muted small">Bấm vào tên để xem chi tiết. "Nộp sớm / đúng hạn / trễ / chưa nộp" dựa trên việc <b>ban cán
+          sự xác nhận</b>, không chỉ dựa vào lời học sinh.</p>
+      <p class="empty" th:if="${rows.isEmpty()}">Chưa có học sinh nào. Hãy thêm danh sách lớp ở ô bên dưới. Mỗi học sinh
+        mới thêm sẽ được cấp một mật khẩu; bạn xem ở cột "Mật khẩu" hoặc tải file Excel để gửi cho các em.</p>
+      <div th:unless="${rows.isEmpty()}">
+        <div th:each="g : ${studentGroups}" style="margin-top:14px">
+          <h3>🏫 <span th:text="${g.title()}"></span> <span class="muted small"
+              th:text="'(' + ${g.rows().size()} + ' học sinh)'"></span></h3>
+          <p class="empty" th:if="${g.rows().isEmpty()}">Lớp này chưa có học sinh nào.</p>
+          <div class="scroll-x" th:unless="${g.rows().isEmpty()}">
+            <table>
+              <tr>
+                <th>Học sinh</th>
+                <th>Lớp</th>
+                <th>Lần gần nhất</th>
+                <th>Đã bắt đầu</th>
+                <th>Báo xong</th>
+                <th>BCS xác nhận</th>
+                <th>Nộp sớm</th>
+                <th>Đúng hạn</th>
+                <th>Trễ</th>
+                <th>Chưa nộp</th>
+                <th>Ban cán sự</th>
+                <th>Mật khẩu</th>
+                <th>Tải file</th>
+                <th></th>
+              </tr>
+              <tr th:each="r : ${g.rows()}">
+                <td><a th:href="@{/teacher/student/{id}(id=${r.id()})}" th:text="${r.name()}"></a>
+                  <span class="pill mon" th:if="${r.monitor()}">BCS</span>
+                </td>
+                <td>
+                  <form th:action="@{/teacher/student/{id}/class(id=${r.id()})}" method="post" class="inline-form">
+                    <select name="classId" onchange="this.form.submit()"
+                      style="padding:5px 8px;border:1.5px solid #ddd6fe;border-radius:10px;font:inherit;background:#fff">
+                      <option value="">— Chưa có lớp —</option>
+                      <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"
+                        th:selected="${r.classId() != null and r.classId() == c.id}"></option>
+                    </select>
+                  </form>
+                </td>
+                <td th:text="${r.lastTime()}"></td>
+                <td th:text="${r.started()}"></td>
+                <td th:text="${r.done()}"></td>
+                <td th:text="${r.confirmed()}"></td>
+                <td th:text="${r.early()}"></td>
+                <td th:text="${r.onTime()}"></td>
+                <td th:text="${r.late()}"></td>
+                <td th:text="${r.missing()}"></td>
+                <td>
+                  <form th:action="@{/teacher/student/{id}/monitor(id=${r.id()})}" method="post" class="inline-form">
+                    <button class="btn sm" th:classappend="${r.monitor()} ? 'danger' : ''"
+                      th:text="${r.monitor()} ? 'Bỏ' : 'Chọn'"></button>
+                  </form>
+                </td>
+                <td>
+                  <form th:action="@{/teacher/student/{id}/password(id=${r.id()})}" method="post" class="pwform">
+                    <input name="password" th:value="${passwords[r.id()]}" maxlength="20" placeholder="Chưa có"
+                      autocomplete="off">
+                    <button class="btn sm primary" type="submit" title="Lưu mật khẩu đang gõ">Lưu</button>
+                    <button class="btn sm" type="submit" name="random" value="1"
+                      title="Tạo mật khẩu ngẫu nhiên">🎲</button>
+                  </form>
+                </td>
+                <td><a class="btn sm" th:href="@{/teacher/student/{id}/export.xlsx(id=${r.id()})}"
+                    title="Tải file Excel riêng của học sinh này">⬇ Excel</a></td>
+                <td>
+                  <form th:action="@{/teacher/student/{id}/delete(id=${r.id()})}" method="post" class="inline-form"
+                    onsubmit="return confirm('Xóa học sinh này và toàn bộ dữ liệu của em?')"><button
+                      class="btn sm danger">Xóa</button></form>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Thêm danh sách lớp</h2>
+      <p class="muted small">Mỗi dòng một học sinh. Muốn tự đặt mật khẩu thì viết <b>Tên, mật khẩu</b> (ví dụ: <i>Nguyễn
+          Văn An, abc123</i>); không ghi thì hệ thống tự cấp. Muốn học sinh nhận lời nhắc qua email thì viết thêm email:
+        <i>Nguyễn Văn An, abc123, an@gmail.com</i>. Tên đã có sẽ được bỏ qua. Học sinh đăng nhập bằng đúng tên và mật
+        khẩu ở đây.</p>
+      <form th:action="@{/teacher/roster}" method="post">
+        <p th:if="${!classes.isEmpty()}" style="margin:0 0 8px"><label>Xếp vào lớp:
+            <select name="classId"
+              style="padding:6px 10px;border:1.5px solid #ddd6fe;border-radius:10px;font:inherit;background:#fff">
+              <option value="">— Chưa xếp lớp —</option>
+              <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"></option>
+            </select></label> <small class="muted">Tên đã có tài khoản mà chưa có lớp cũng được ghi danh vào lớp
+            này.</small></p>
+        <textarea name="names" placeholder="Nguyễn Văn An&#10;Trần Thị Bình, binh2026&#10;..."></textarea>
+        <p><button class="btn primary" type="submit">Thêm vào danh sách</button></p>
+      </form>
+    </section>
+
+
+    <section class="panel">
+      <h2>Chuyện hoãn việc</h2>
+      <p class="muted small">Mỗi khi học sinh bấm hoãn, trợ lý hỏi lý do và đưa gợi ý phù hợp. Số liệu này giúp cô biết
+        nên hỗ trợ ai và hỗ trợ chuyện gì.</p>
+      <p class="empty" th:if="${postponeAll == 0}">Chưa có học sinh nào bấm hoãn.</p>
+      <div th:unless="${postponeAll == 0}">
+        <div class="scroll-x">
+          <table>
+            <tr>
+              <th>Lý do muốn hoãn</th>
+              <th>Số lần</th>
+              <th></th>
+              <th>Hoãn vào lúc</th>
+              <th>Số lần</th>
+            </tr>
+            <tr th:each="i : ${#numbers.sequence(0, statRows - 1)}">
+              <td th:text="${i lt reasonStats.size()} ? ${reasonStats[i].label()} : ''"></td>
+              <td><b th:text="${i lt reasonStats.size()} ? ${reasonStats[i].count()} : ''"></b></td>
+              <td></td>
+              <td th:text="${i lt bandStats.size()} ? ${bandStats[i].label()} : ''"></td>
+              <td><b th:text="${i lt bandStats.size()} ? ${bandStats[i].count()} : ''"></b></td>
+            </tr>
+          </table>
+        </div>
+        <h3 style="margin-top:14px">Các bạn hay hoãn nhất</h3>
+        <div class="scroll-x">
+          <table>
+            <tr>
+              <th>Học sinh</th>
+              <th>Lớp</th>
+              <th>Tổng lần hoãn</th>
+              <th>Lý do hay gặp</th>
+            </tr>
+            <tr th:each="p : ${postponers}">
+              <td><a th:href="@{/teacher/student/{id}(id=${p.id()})}" th:text="${p.name()}"></a></td>
+              <td th:text="${p.className()}"></td>
+              <td th:text="${p.total()}"></td>
+              <td th:text="${p.reasons()}"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div th:if="${!helpReqs.isEmpty()}">
+        <h3 style="margin-top:14px">🙋 Các bạn bấm "Mình cần được giúp"</h3>
+        <div class="scroll-x">
+          <table>
+            <tr>
+              <th>Học sinh</th>
+              <th>Lớp</th>
+              <th>Nhiệm vụ</th>
+            </tr>
+            <tr th:each="h : ${helpReqs}">
+              <td><a th:href="@{/teacher/student/{id}(id=${h.id()})}" th:text="${h.name()}"></a></td>
+              <td th:text="${h.className()}"></td>
+              <td th:text="${h.task()}"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel security-panel">
+      <h2>🔐 Bảo mật tài khoản</h2>
+      <p class="muted small">Đổi mật khẩu quản trị hoặc mã PIN của ban cán sự. Cần nhập giá trị hiện tại để xác nhận.
+      </p>
+      <div class="security-grid">
+        <form action="/teacher/security/change" method="post" autocomplete="off">
+          <h3>Đổi mật khẩu quản trị viên</h3>
+          <input type="hidden" name="kind" value="admin">
+          <label>Mật khẩu hiện tại<input type="password" name="oldValue" required
+              autocomplete="current-password"></label>
+          <label>Mật khẩu mới (ít nhất 8 ký tự)<input type="password" name="newValue" minlength="8" maxlength="100"
+              required autocomplete="new-password"></label>
+          <label>Nhập lại mật khẩu mới<input type="password" name="confirmValue" minlength="8" maxlength="100" required
+              autocomplete="new-password"></label>
+          <button class="btn primary" type="submit">Lưu mật khẩu</button>
+        </form>
+        <form action="/teacher/security/change" method="post" autocomplete="off">
+          <h3>Đổi mã PIN ban cán sự</h3>
+          <input type="hidden" name="kind" value="monitor">
+          <label>PIN hiện tại<input type="password" name="oldValue" inputmode="numeric" required></label>
+          <label>PIN mới (4–12 chữ số)<input type="password" name="newValue" inputmode="numeric" pattern="[0-9]{4,12}"
+              required></label>
+          <label>Nhập lại PIN mới<input type="password" name="confirmValue" inputmode="numeric" pattern="[0-9]{4,12}"
+              required></label>
+          <button class="btn primary" type="submit">Lưu mã PIN</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Dọn dữ liệu</h2>
+      <p class="muted small">Xóa toàn bộ nhiệm vụ, tiến độ và các cuộc trò chuyện (giữ lại danh sách học sinh). Dùng khi
+        muốn bắt đầu lại sạch sẽ.</p>
+      <form th:action="@{/teacher/reset}" method="post"
+        onsubmit="return confirm('Chắc chắn xóa toàn bộ nhiệm vụ và trò chuyện?')">
+        <button class="btn danger" type="submit">Xóa toàn bộ nhiệm vụ và trò chuyện</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    /* Word hiển thị dưới dạng liên kết thay vì ảnh bị hỏng. */
+    document.querySelectorAll('a[href*="/task-image/"]').forEach(async a => {
+      try {
+        const r = await fetch(a.href, { method: 'HEAD' });
+        if ((r.headers.get('content-type') || '').includes('wordprocessingml')) {
+          a.replaceChildren(document.createTextNode('📄 Xem Word'));
+          a.classList.add('word-link');
+          a.setAttribute('download', 'de-bai.docx');
+        }
+      } catch (e) { /* vẫn giữ liên kết tải tệp */ }
+    });
+  </script>
 </body>
+
 </html>

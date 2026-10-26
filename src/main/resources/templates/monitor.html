@@ -1,122 +1,161 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ban cán sự - AI-Nudge</title><link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ban cán sự - AI-Nudge</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
+
 <body>
-<header class="top staff-top"><b>AI-Nudge · Ban cán sự</b>
-  <span class="hello" th:text="'Xin chào, ' + ${name}"></span>
-  <div class="t-actions"><a class="nav" th:href="@{/student}">💬 Về trang trò chuyện</a></div>
-</header>
+  <header class="top staff-top"><b>AI-Nudge · Ban cán sự</b>
+    <span class="hello" th:text="'Xin chào, ' + ${name}"></span>
+    <div class="t-actions"><a class="nav" th:href="@{/student}">💬 Về trang trò chuyện</a></div>
+  </header>
 
-<main class="wide">
-  <p class="msgbox" th:if="${msg}" th:text="${msg}"></p>
-  <section class="panel">
-    <h2>Nhập nhiệm vụ trong ngày</h2>
-    <p class="muted small">Nhiệm vụ bạn nhập sẽ hiện cho cả lớp. Trợ lý sẽ nhắc các bạn làm và nộp trước hạn.</p>
-    <form th:action="@{/monitor/task}" method="post" enctype="multipart/form-data" class="taskform" id="taskForm">
-      <label class="f-subject"><span>Môn</span>
-        <select name="subject">
-          <option>Toán</option><option>Ngữ văn</option><option>Tiếng Anh</option><option>Vật lý</option>
-          <option>Hóa học</option><option>Sinh học</option><option>Lịch sử</option><option>Địa lý</option><option>Môn khác</option>
-        </select>
-      </label>
-      <label class="f-title"><span>Nội dung nhiệm vụ</span>
-        <input type="text" name="title" maxlength="190" placeholder="Ví dụ: Bài 5 phương trình bậc hai, làm 10 câu trang 45" required>
-      </label>
-      <label class="f-deadline"><span>Hạn nộp</span>
-        <input type="datetime-local" name="deadline" th:value="${defaultDeadline}" required>
-      </label>
-      <div class="f-photos">
-        <span class="lbl">Tệp đề bài <small class="muted">(bắt buộc có ảnh hoặc Word .docx, tối đa 10 tệp)</small></span>
-        <div class="dropzone">
-          <label class="btn" for="taskFiles">📎 Chọn ảnh hoặc Word</label>
-          <input type="file" name="files" id="taskFiles" accept="image/*,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
-          <span class="muted small" id="taskFilesInfo">Chưa chọn tệp nào</span>
+  <main class="wide">
+    <p class="msgbox" th:if="${msg}" th:text="${msg}"></p>
+    <section class="panel">
+      <h2>Nhập nhiệm vụ trong ngày</h2>
+      <p class="muted small">Nhiệm vụ bạn nhập sẽ hiện cho các lớp bạn chọn. Trợ lý sẽ nhắc các bạn làm và nộp trước
+        hạn.</p>
+      <form th:action="@{/monitor/task}" method="post" enctype="multipart/form-data" class="taskform" id="taskForm">
+        <label class="f-subject"><span>Môn</span>
+          <select name="subject">
+            <option>Toán</option>
+            <option>Ngữ văn</option>
+            <option>Tiếng Anh</option>
+            <option>Vật lý</option>
+            <option>Hóa học</option>
+            <option>Sinh học</option>
+            <option>Lịch sử</option>
+            <option>Địa lý</option>
+            <option>Môn khác</option>
+          </select>
+        </label>
+        <label class="f-title"><span>Nội dung nhiệm vụ</span>
+          <input type="text" name="title" maxlength="190"
+            placeholder="Ví dụ: Bài 5 phương trình bậc hai, làm 10 câu trang 45" required>
+        </label>
+        <label class="f-deadline"><span>Hạn nộp</span>
+          <input type="datetime-local" name="deadline" th:value="${defaultDeadline}" required>
+        </label>
+        <div class="f-classes" th:if="${!classes.isEmpty()}" style="grid-column:1/-1">
+          <span class="lbl" style="display:block;font-size:.88rem;font-weight:600;margin-bottom:6px">Giao cho lớp <small
+              class="muted">(chọn một hoặc nhiều lớp; bỏ chọn hết = giao cho tất cả học sinh)</small></span>
+          <label th:each="c : ${classes}"
+            style="display:inline-flex;align-items:center;gap:6px;margin:0 16px 6px 0;cursor:pointer">
+            <input type="checkbox" name="classIds" th:value="${c.id}"
+              th:checked="${myClassId != null and myClassId == c.id}">
+            <span th:text="${c.name}" style="display:inline;margin:0;font-weight:500"></span>
+          </label>
         </div>
-        <div id="taskPrev" class="thumbs"></div>
-      </div>
-      <div class="f-submit"><button class="btn primary" type="submit">＋ Thêm nhiệm vụ</button></div>
-    </form>
-  </section>
+        <div class="f-photos">
+          <span class="lbl">Tệp đề bài <small class="muted">(bắt buộc có ảnh hoặc Word .docx, tối đa 10
+              tệp)</small></span>
+          <div class="dropzone">
+            <label class="btn" for="taskFiles">📎 Chọn ảnh hoặc Word</label>
+            <input type="file" name="files" id="taskFiles"
+              accept="image/*,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple
+              hidden>
+            <span class="muted small" id="taskFilesInfo">Chưa chọn tệp nào</span>
+          </div>
+          <div id="taskPrev" class="thumbs"></div>
+        </div>
+        <div class="f-submit"><button class="btn primary" type="submit">＋ Thêm nhiệm vụ</button></div>
+      </form>
+    </section>
 
-  <section class="panel">
-    <h2>Nhiệm vụ gần đây</h2>
-    <p class="empty" th:if="${rows.isEmpty()}">Chưa có nhiệm vụ nào.</p>
-    <div class="scroll-x" th:unless="${rows.isEmpty()}">
-    <table>
-      <tr><th>Nhiệm vụ</th><th>Ảnh / Word đính kèm</th><th>Hạn nộp</th><th>Học sinh báo xong</th><th>Đã xác nhận nộp</th><th></th></tr>
-      <tr th:each="r : ${rows}">
-        <td th:text="${r.label()}"></td>
-        <td>
-          <span class="imgitem" th:each="iid : ${r.images()}">
-            <a th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank"><img class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
-            <form th:action="@{/monitor/task-image/{id}/delete(id=${iid})}" method="post" class="inline-form"
+    <section class="panel">
+      <h2>Nhiệm vụ gần đây</h2>
+      <p class="empty" th:if="${rows.isEmpty()}">Chưa có nhiệm vụ nào.</p>
+      <div class="scroll-x" th:unless="${rows.isEmpty()}">
+        <table>
+          <tr>
+            <th>Nhiệm vụ</th>
+            <th>Lớp được giao</th>
+            <th>Ảnh / Word đính kèm</th>
+            <th>Hạn nộp</th>
+            <th>Học sinh báo xong</th>
+            <th>Đã xác nhận nộp</th>
+            <th></th>
+          </tr>
+          <tr th:each="r : ${rows}">
+            <td th:text="${r.label()}"></td>
+            <td th:text="${r.classes()}"></td>
+            <td>
+              <span class="imgitem" th:each="iid : ${r.images()}">
+                <a th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank"><img class="thumb"
+                    th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
+                <form th:action="@{/monitor/task-image/{id}/delete(id=${iid})}" method="post" class="inline-form"
                   onsubmit="return confirm('Xóa tệp này?')"><button class="x" title="Xóa ảnh">×</button></form>
-          </span>
-          <span class="muted small" th:if="${r.images().isEmpty()}">Chưa có tệp</span>
-          <form th:action="@{/monitor/task/{id}/images(id=${r.id()})}" method="post" enctype="multipart/form-data" class="addimg">
-            <label class="btn sm">＋ Thêm ảnh/Word<input type="file" name="files" accept="image/*,.docx" multiple hidden onchange="if(this.files.length) this.form.submit()"></label>
-          </form>
-        </td>
-        <td th:text="${r.deadline()}"></td>
-        <td th:text="${r.done()} + ' / ' + ${r.total()}"></td>
-        <td th:text="${r.confirmed()} + ' / ' + ${r.total()}"></td>
-        <td>
-          <a class="btn sm primary" th:href="@{/monitor/task/{id}(id=${r.id()})}">Xác nhận ai đã nộp</a>
-          <form th:action="@{/monitor/task/{id}/delete(id=${r.id()})}" method="post" class="inline-form"
+              </span>
+              <span class="muted small" th:if="${r.images().isEmpty()}">Chưa có tệp</span>
+              <form th:action="@{/monitor/task/{id}/images(id=${r.id()})}" method="post" enctype="multipart/form-data"
+                class="addimg">
+                <label class="btn sm">＋ Thêm ảnh/Word<input type="file" name="files" accept="image/*,.docx" multiple
+                    hidden onchange="if(this.files.length) this.form.submit()"></label>
+              </form>
+            </td>
+            <td th:text="${r.deadline()}"></td>
+            <td th:text="${r.done()} + ' / ' + ${r.total()}"></td>
+            <td th:text="${r.confirmed()} + ' / ' + ${r.total()}"></td>
+            <td>
+              <a class="btn sm primary" th:href="@{/monitor/task/{id}(id=${r.id()})}">Xác nhận ai đã nộp</a>
+              <form th:action="@{/monitor/task/{id}/delete(id=${r.id()})}" method="post" class="inline-form"
                 onsubmit="return confirm('Xóa nhiệm vụ này?')"><button class="btn sm danger">Xóa</button></form>
-        </td>
-      </tr>
-    </table>
-    </div>
-  </section>
-</main>
-<script>
-  /* Xem trước ảnh/Word và báo lỗi trước khi gửi (tối đa 10 tệp, mỗi tệp 10 MB) */
-  (function () {
-    const inp = document.getElementById('taskFiles'), prev = document.getElementById('taskPrev'),
-          info = document.getElementById('taskFilesInfo'), form = document.getElementById('taskForm');
-    if (!inp) return;
-    inp.addEventListener('change', () => {
-      prev.innerHTML = '';
-      [...inp.files].slice(0, 10).forEach(f => {
-        const d = document.createElement('div'); d.className = 'it';
-        if (f.name.toLowerCase().endsWith('.docx')) { d.textContent = '📄 ' + f.name; }
-        else { const im = document.createElement('img'); im.src = URL.createObjectURL(f); d.appendChild(im); }
-        prev.appendChild(d);
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script>
+    /* Xem trước ảnh/Word và báo lỗi trước khi gửi (tối đa 10 tệp, mỗi tệp 10 MB) */
+    (function () {
+      const inp = document.getElementById('taskFiles'), prev = document.getElementById('taskPrev'),
+        info = document.getElementById('taskFilesInfo'), form = document.getElementById('taskForm');
+      if (!inp) return;
+      inp.addEventListener('change', () => {
+        prev.innerHTML = '';
+        [...inp.files].slice(0, 10).forEach(f => {
+          const d = document.createElement('div'); d.className = 'it';
+          if (f.name.toLowerCase().endsWith('.docx')) { d.textContent = '📄 ' + f.name; }
+          else { const im = document.createElement('img'); im.src = URL.createObjectURL(f); d.appendChild(im); }
+          prev.appendChild(d);
+        });
+        info.textContent = inp.files.length ? 'Đã chọn ' + inp.files.length + ' tệp' : 'Chưa chọn tệp nào';
       });
-      info.textContent = inp.files.length ? 'Đã chọn ' + inp.files.length + ' tệp' : 'Chưa chọn tệp nào';
+      form.addEventListener('submit', e => {
+        if (!inp.files.length) {
+          e.preventDefault(); alert('Bạn cần chọn ít nhất một ảnh hoặc tệp Word (.docx) trước khi giao nhiệm vụ.'); return;
+        }
+        const invalid = [...inp.files].some(f => !f.type.startsWith('image/') && !f.name.toLowerCase().endsWith('.docx'));
+        const big = [...inp.files].some(f => f.size > 10 * 1024 * 1024);
+        if (invalid) {
+          e.preventDefault(); alert('Chỉ chấp nhận ảnh hoặc file Word định dạng .docx.'); return;
+        }
+        if (big || inp.files.length > 10) {
+          e.preventDefault();
+          alert('Mỗi tệp tối đa 10 MB và tối đa 10 tệp. Bạn chọn lại giúp mình nhé.');
+        }
+      });
+    })();
+  </script>
+  <script>
+    /* Word hiển thị dưới dạng liên kết thay vì ảnh bị hỏng. */
+    document.querySelectorAll('a[href*="/task-image/"]').forEach(async a => {
+      try {
+        const r = await fetch(a.href, { method: 'HEAD' });
+        if ((r.headers.get('content-type') || '').includes('wordprocessingml')) {
+          a.replaceChildren(document.createTextNode('📄 Xem Word'));
+          a.classList.add('word-link');
+          a.setAttribute('download', 'de-bai.docx');
+        }
+      } catch (e) { /* vẫn giữ liên kết tải tệp */ }
     });
-    form.addEventListener('submit', e => {
-      if (!inp.files.length) {
-        e.preventDefault(); alert('Bạn cần chọn ít nhất một ảnh hoặc tệp Word (.docx) trước khi giao nhiệm vụ.'); return;
-      }
-      const invalid = [...inp.files].some(f => !f.type.startsWith('image/') && !f.name.toLowerCase().endsWith('.docx'));
-      const big = [...inp.files].some(f => f.size > 10 * 1024 * 1024);
-      if (invalid) {
-        e.preventDefault(); alert('Chỉ chấp nhận ảnh hoặc file Word định dạng .docx.'); return;
-      }
-      if (big || inp.files.length > 10) {
-        e.preventDefault();
-        alert('Mỗi tệp tối đa 10 MB và tối đa 10 tệp. Bạn chọn lại giúp mình nhé.');
-      }
-    });
-  })();
-</script>
-<script>
-/* Word hiển thị dưới dạng liên kết thay vì ảnh bị hỏng. */
-document.querySelectorAll('a[href*="/task-image/"]').forEach(async a => {
-  try {
-    const r = await fetch(a.href, {method:'HEAD'});
-    if ((r.headers.get('content-type') || '').includes('wordprocessingml')) {
-      a.replaceChildren(document.createTextNode('📄 Xem Word'));
-      a.classList.add('word-link');
-      a.setAttribute('download', 'de-bai.docx');
-    }
-  } catch (e) { /* vẫn giữ liên kết tải tệp */ }
-});
-</script>
+  </script>
 </body>
+
 </html>
