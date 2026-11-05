@@ -43,6 +43,9 @@ public class SchemaFix implements ApplicationRunner {
         exec("ALTER TABLE proof_image MODIFY content_type VARCHAR(120) NOT NULL");
         exec("ALTER TABLE task_progress ALTER COLUMN reminders_disabled SET DEFAULT 0");
         fixDuplicateProgress();
+        // Bảng nhiều-lớp (student_class) đã bỏ vì mỗi học sinh chỉ một lớp. Bảng này không còn được dùng,
+        // nhưng nếu còn trên DB thì ràng buộc khóa ngoại của nó sẽ chặn việc xóa học sinh.
+        exec("DROP TABLE IF EXISTS student_class");
     }
 
     /**

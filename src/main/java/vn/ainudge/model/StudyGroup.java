@@ -16,4 +16,9 @@ public class StudyGroup {
 
     @Column(nullable = false, length = 80)
     public String name;
+
+    /** Tổ trưởng (phải là thành viên của tổ). null = chưa có. */
+    @ManyToOne
+    @JoinColumn(name = "leader_id")
+    public Student leader;
 }

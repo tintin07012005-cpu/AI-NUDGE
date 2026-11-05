@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Người quản trị - AI-Nudge</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=4">
 </head>
 
 <body>
@@ -68,7 +68,7 @@
                       <label th:each="c : ${classes}" style="display:block;margin:2px 0"><input type="checkbox"
                           name="classIds" th:value="${c.id}" th:checked="${t.classIds().contains(c.id) and t.groupIds().isEmpty()}"> <span
                           th:text="${c.name}"></span></label>
-                      <button class="btn sm primary" type="submit">Tiến hành giao bài</button>
+                      <button class="btn sm primary" type="submit">Giao cả lớp / toàn hệ thống</button>
                       <small class="muted">Bỏ chọn hết = tất cả học sinh</small>
                     </form>
                     <form th:action="@{/teacher/task/{id}/groups(id=${t.id()})}" method="post"
@@ -131,9 +131,9 @@
 
     <section class="panel">
       <h2>👥 Tổ / nhóm trong từng lớp</h2>
-      <p class="muted small">Tạo nhóm thuộc đúng một lớp. Sau đó xếp học sinh vào nhóm ở bảng Học sinh.
+      <p class="muted small">Tạo nhóm thuộc đúng một lớp. Sau đó xếp học sinh vào nhóm ở bảng Học sinh, rồi chọn tổ trưởng cho từng tổ ở đây (ban cán sự cũng phân được).
         Một nhiệm vụ giao riêng cho Tổ 1 sẽ không hiển thị với Tổ 2.</p>
-      <form th:action="@{/teacher/group}" method="post" class="pwform" style="margin-bottom:12px">
+      <form th:action="@{/teacher/group}" method="post" class="group-create-form">
         <select name="classId" required>
           <option value="">— Chọn lớp —</option>
           <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"></option>
@@ -141,12 +141,20 @@
         <input name="name" placeholder="Ví dụ: Tổ 1 / Nhóm nâng cao" maxlength="80" required>
         <button class="btn primary sm" type="submit">＋ Tạo nhóm</button>
       </form>
-      <div class="group-tags" th:if="${!groups.isEmpty()}">
-        <div class="group-tag" th:each="g : ${groups}">
-          <span th:text="${g.classRoom.name + ' · ' + g.name}"></span>
+      <div class="group-rows" th:if="${!groups.isEmpty()}">
+        <div class="group-row" th:each="g : ${groups}">
+          <b th:text="${g.classRoom.name + ' · ' + g.name}"></b>
+          <form th:action="@{/teacher/group/{id}/leader(id=${g.id})}" method="post" class="leader-form">
+            <select name="studentId" aria-label="Chọn tổ trưởng">
+              <option value="">⭐ Chưa có tổ trưởng</option>
+              <option th:each="st : ${groupMembers.get(g.id)}" th:value="${st.id}" th:text="${st.name}"
+                      th:selected="${g.leader != null and g.leader.id == st.id}"></option>
+            </select>
+            <button class="btn sm" type="submit">Lưu</button>
+          </form>
           <form th:action="@{/teacher/group/{id}/delete(id=${g.id})}" method="post" class="inline-form"
             onsubmit="return confirm('Xóa tổ/nhóm này?')">
-            <button class="x" type="submit" aria-label="Xóa nhóm">×</button>
+            <button class="btn sm leave-btn" type="submit">Xóa</button>
           </form>
         </div>
       </div>
@@ -170,8 +178,7 @@
             <table>
               <tr>
                 <th>Học sinh</th>
-                <th>Lớp đã tham gia</th>
-                <th>Tổ / nhóm</th>
+                <th>Lớp và tổ</th>
                 <th>Lần gần nhất</th>
                 <th>Đã bắt đầu</th>
                 <th>Báo xong</th>
@@ -190,36 +197,29 @@
                   <span class="pill mon" th:if="${r.monitor()}">BCS</span>
                 </td>
                 <td>
-                  <div th:each="c : ${classes}" th:if="${studentClassIds[r.id()].contains(c.id)}" class="member-class">
-                    <span th:text="${c.name}"></span>
-                    <form th:action="@{/teacher/student/{id}/class/remove(id=${r.id()})}" method="post" class="inline-form"
-                      onsubmit="return confirm('Bỏ học sinh khỏi lớp này?')">
-                      <input type="hidden" name="classId" th:value="${c.id}">
-                      <button type="submit" class="x" title="Bỏ khỏi lớp">×</button>
+                  <div class="class-line">
+                    <form th:action="@{/teacher/student/{id}/class(id=${r.id()})}" method="post" class="inline-form class-one-form">
+                      <select name="classId" aria-label="Lớp của học sinh"
+                              onchange="if(confirm('Đổi lớp sẽ bỏ tổ/nhóm và chức ban cán sự của học sinh này. Tiếp tục?')) this.form.submit(); else this.form.reset();">
+                        <option value="">Chưa xếp lớp</option>
+                        <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"
+                                th:selected="${studentClassIds[r.id()].contains(c.id)}"></option>
+                      </select>
                     </form>
+                    <th:block th:each="c : ${classes}" th:if="${studentClassIds[r.id()].contains(c.id)}">
+                      <th:block th:with="cg=${groupsByClass.get(c.id)}">
+                        <form th:if="${cg != null}" th:action="@{/teacher/student/{id}/group(id=${r.id()})}" method="post"
+                          class="inline-form class-group-form">
+                          <input type="hidden" name="classId" th:value="${c.id}">
+                          <select name="groupId" onchange="this.form.submit()" aria-label="Tổ trong lớp này">
+                            <option value="">Chưa chia tổ</option>
+                            <option th:each="g : ${cg}" th:value="${g.id}" th:text="${g.name}"
+                                    th:selected="${studentGroupIds[r.id()].contains(g.id)}"></option>
+                          </select>
+                        </form>
+                      </th:block>
+                    </th:block>
                   </div>
-                  <form th:action="@{/teacher/student/{id}/class(id=${r.id()})}" method="post" class="inline-form">
-                    <select name="classId" onchange="if(this.value) this.form.submit()">
-                      <option value="">＋ Thêm lớp</option>
-                      <option th:each="c : ${classes}" th:if="${!studentClassIds[r.id()].contains(c.id)}"
-                              th:value="${c.id}" th:text="${c.name}"></option>
-                    </select>
-                  </form>
-                </td>
-                <td>
-                  <details th:if="${!groups.isEmpty()}">
-                    <summary class="muted small" style="cursor:pointer">Xếp tổ/nhóm</summary>
-                    <form th:action="@{/teacher/student/{id}/groups(id=${r.id()})}" method="post">
-                      <label th:each="sg : ${groups}" th:if="${studentClassIds[r.id()].contains(sg.classRoom.id)}"
-                             style="display:block;min-width:130px;margin:4px 0">
-                        <input type="checkbox" name="groupIds" th:value="${sg.id}"
-                               th:checked="${studentGroupIds[r.id()].contains(sg.id)}">
-                        <span th:text="${sg.classRoom.name + ' / ' + sg.name}"></span>
-                      </label>
-                      <button class="btn primary sm" type="submit">Lưu nhóm</button>
-                    </form>
-                  </details>
-                  <span class="muted small" th:if="${groups.isEmpty()}">—</span>
                 </td>
                 <td th:text="${r.lastTime()}"></td>
                 <td th:text="${r.started()}"></td>

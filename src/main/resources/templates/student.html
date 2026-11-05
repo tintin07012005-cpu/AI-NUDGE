@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI-Nudge</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=4">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <meta name="theme-color" content="#6c5ce7">
@@ -17,6 +17,7 @@
     <span class="hello">Xin chào, <b th:text="${name}"></b><small th:if="${className != null}"
         th:text="' · Lớp ' + ${className}"></small></span>
     <a class="nav" th:if="${monitor}" th:href="@{/monitor}">📋 Ban cán sự</a>
+    <a class="nav" th:if="${isLeader}" th:href="@{/student/leader}">⭐ Tổ trưởng</a>
     <form th:action="@{/logout}" method="post" class="inline"><button class="link">Đăng xuất</button></form>
   </header>
 
@@ -25,21 +26,29 @@
       <span id="notifText"></span>
       <button class="btn primary sm" id="notifBtn" type="button" hidden>Cho phép thông báo</button>
     </div>
-    <div class="notice class-switch" th:if="${!joinedClasses.isEmpty()}">
-      <form th:action="@{/student/class/select}" method="post" class="class-switch-form">
-        <span>🏫 Lớp đang xem:</span>
-        <select name="classId" onchange="this.form.submit()" aria-label="Chuyển lớp">
-          <option th:each="c : ${joinedClasses}" th:value="${c.id}" th:text="${c.name}"
-                  th:selected="${activeClassId != null and activeClassId == c.id}"></option>
-        </select>
+    <div class="notice warn" th:if="${msg != null}" th:text="${msg}"></div>
+    <div class="notice class-switch" th:if="${className != null}">
+      <span class="class-name">🏫 Lớp: <b th:text="${className}"></b></span>
+      <form th:if="${!classGroups.isEmpty()}" th:action="@{/student/groups}" method="post" class="class-switch-form group-pick-form">
+        <span>👥 Tổ:</span>
+        <label class="group-chip"><input type="radio" name="groupId" value="" th:checked="${myGroupId == null}"><span>Chưa chọn</span></label>
+        <label class="group-chip" th:each="g : ${classGroups}"><input type="radio" name="groupId" th:value="${g.id}" th:checked="${myGroupId != null and myGroupId == g.id}"><span th:text="${g.name}"></span></label>
+        <button type="submit" class="btn primary sm">Lưu</button>
       </form>
-      <form th:if="${!availableClasses.isEmpty()}" th:action="@{/student/class}" method="post" class="class-switch-form">
-        <select name="classId" required aria-label="Thêm lớp">
-          <option value="">＋ Chọn lớp muốn tham gia</option>
-          <option th:each="c : ${availableClasses}" th:value="${c.id}" th:text="${c.name}"></option>
-        </select>
-        <button type="submit" class="btn primary sm">Thêm lớp</button>
-      </form>
+      <details class="class-manage">
+        <summary>⚙️ Chuyển lớp</summary>
+        <form th:if="${!availableClasses.isEmpty()}" th:action="@{/student/class}" method="post" class="class-manage-row"
+              data-msg="Chuyển sang lớp mới? Tổ/nhóm hiện tại của bạn sẽ được bỏ, và chức ban cán sự hoặc tổ trưởng (nếu có) cũng được bỏ."
+              onsubmit="return confirm(this.dataset.msg)">
+          <select name="classId" required aria-label="Chuyển sang lớp">
+            <option value="">— Chọn lớp mới —</option>
+            <option th:each="c : ${availableClasses}" th:value="${c.id}" th:text="${c.name}"></option>
+          </select>
+          <button type="submit" class="btn primary sm">Chuyển lớp</button>
+        </form>
+        <small class="muted" th:if="${availableClasses.isEmpty()}">Chưa có lớp khác để chuyển.</small>
+        <small class="muted" style="display:block;margin-top:6px">Mỗi tài khoản chỉ thuộc một lớp. Nếu bạn học thêm lớp khác, hãy dùng một tài khoản riêng cho lớp đó.</small>
+      </details>
     </div>
     <div id="classBar" class="notice warn" th:if="${needClass}">
       <form th:action="@{/student/class}" method="post"

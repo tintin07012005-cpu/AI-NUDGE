@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,20 +19,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import vn.ainudge.dto.Reply;
 import vn.ainudge.dto.WeekPlan;
 import vn.ainudge.dto.WeekTask;
 import vn.ainudge.dto.TaskChip;
 import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Student;
+import vn.ainudge.model.StudyGroup;
 import vn.ainudge.model.Task;
 import vn.ainudge.model.TaskProgress;
 import vn.ainudge.repo.ClassRoomRepository;
 import vn.ainudge.repo.StudentRepository;
+import vn.ainudge.repo.StudyGroupRepository;
 import vn.ainudge.repo.TaskRepository;
 import vn.ainudge.repo.TaskProgressRepository;
 import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.service.ChatService;
+import vn.ainudge.service.ClassDataService;
 import vn.ainudge.service.NotifyService;
 import vn.ainudge.service.PresenceTracker;
 
@@ -42,6 +48,8 @@ public class StudentController {
     private final NotifyService notify;
     private final PresenceTracker presence;
     private final ClassRoomRepository classRooms;
+    private final StudyGroupRepository studyGroups;
+    private final ClassDataService data;
     private final TaskRepository tasks;
     private final TaskProgressRepository progresses;
     private final TaskImageRepository taskImages;
@@ -65,7 +73,10 @@ public class StudentController {
 
     public StudentController(StudentRepository students, ChatService chat, NotifyService notify,
             PresenceTracker presence, ClassRoomRepository classRooms,
-            TaskRepository tasks, TaskProgressRepository progresses, TaskImageRepository taskImages) {
+            TaskRepository tasks, TaskProgressRepository progresses, TaskImageRepository taskImages,
+            StudyGroupRepository studyGroups, ClassDataService data) {
+        this.studyGroups = studyGroups;
+        this.data = data;
         this.tasks = tasks;
         this.progresses = progresses;
         this.taskImages = taskImages;
@@ -89,44 +100,42 @@ public class StudentController {
         List<ClassRoom> classList = classRooms.findAllByOrderByNameAsc();
         model.addAttribute("className", s.classRoom == null ? null : s.classRoom.name);
         model.addAttribute("activeClassId", s.classRoom == null ? null : s.classRoom.id);
-        model.addAttribute("joinedClasses", s.joinedClasses().stream()
-                .sorted(Comparator.comparing(c -> c.name, String.CASE_INSENSITIVE_ORDER)).toList());
         model.addAttribute("availableClasses", classList.stream()
                 .filter(c -> !s.isMemberOf(c.id)).toList());
         model.addAttribute("classes", classList);
         model.addAttribute("needClass", s.classRoom == null && !classList.isEmpty());
+        List<StudyGroup> classGroups = s.classRoom == null ? List.of()
+                : studyGroups.findByClassRoom_IdOrderByNameAsc(s.classRoom.id);
+        model.addAttribute("classGroups", classGroups);
+        model.addAttribute("isLeader", !studyGroups.findByLeader_Id(s.id).isEmpty());
+        model.addAttribute("myGroupId", s.classRoom == null ? null
+                : s.studyGroups.stream().filter(g -> g.classRoom.id.equals(s.classRoom.id))
+                        .map(g -> g.id).findFirst().orElse(null));
         return "student";
     }
 
     /** Đăng ký thêm lớp bằng tài khoản hiện có; không tạo tài khoản/email khác. */
+    /** Chọn lớp lần đầu, hoặc chuyển sang lớp khác (mỗi học sinh chỉ một lớp). */
     @PostMapping("/class")
-    public String joinClass(@RequestParam Long classId, HttpSession session) {
+    public String joinClass(@RequestParam Long classId, HttpSession session, RedirectAttributes ra) {
         Student s = current(session);
         synchronized (lockOf(s)) {
-            classRooms.findById(classId).ifPresent(c -> {
-                if (s.classRoom != null) s.classMemberships.add(s.classRoom); // tự chuyển dữ liệu cũ
-                s.classMemberships.add(c);
-                s.classRoom = c;
-                students.save(s);
-                chat.open(s, true); // khởi tạo cuộc trò chuyện cho lớp vừa chọn
-            });
+            String err = data.setStudentClass(s.id, classId);
+            ra.addFlashAttribute("msg", err == null ? "Đã cập nhật lớp của bạn." : err);
+            if (err == null) {
+                Student fresh = current(session);
+                if (fresh.classRoom != null) chat.open(fresh, true); // khởi tạo cuộc trò chuyện cho lớp mới
+            }
         }
         return "redirect:/student";
     }
 
-    /** Chuyển lớp đang xem (chỉ lớp đã tham gia). */
-    @PostMapping("/class/select")
-    public String selectClass(@RequestParam Long classId, HttpSession session) {
+    /** Học sinh tự chọn/đổi tổ-nhóm của mình trong lớp đang xem (các lớp khác giữ nguyên). */
+    @PostMapping("/groups")
+    public String saveMyGroups(@RequestParam(required = false) Long groupId, HttpSession session) {
         Student s = current(session);
         synchronized (lockOf(s)) {
-            if (s.isMemberOf(classId)) {
-                classRooms.findById(classId).ifPresent(c -> {
-                    if (s.classRoom != null) s.classMemberships.add(s.classRoom);
-                    s.classRoom = c;
-                    students.save(s);
-                    chat.open(s, true);
-                });
-            }
+            data.setMyGroup(s.id, groupId);
         }
         return "redirect:/student";
     }

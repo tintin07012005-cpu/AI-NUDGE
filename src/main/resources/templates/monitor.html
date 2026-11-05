@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ban cán sự - AI-Nudge</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=4">
 </head>
 
 <body>
@@ -45,17 +45,27 @@
           <span class="lbl">Giao nhiệm vụ cho ai?</span>
           <div class="scope-choices">
             <label><input type="radio" name="scope" value="class" th:checked="${!classes.isEmpty()}" th:disabled="${classes.isEmpty()}"> Cả lớp</label>
-            <label><input type="radio" name="scope" value="group" th:disabled="${groups.isEmpty()}"> Chỉ tổ/nhóm</label>
+            <label><input type="radio" name="scope" value="group" th:disabled="${allGroups.isEmpty()}"> Chỉ tổ/nhóm</label>
             <label><input type="radio" name="scope" value="all" th:checked="${classes.isEmpty()}"> Tất cả các lớp</label>
           </div>
         </div>
         <div class="f-groups" id="targetGroups" hidden style="grid-column:1/-1">
-          <span class="lbl">Chỉ học sinh thuộc các tổ/nhóm đã chọn mới nhận bài này</span>
-          <label th:each="g : ${groups}" class="scope-item">
-            <input type="checkbox" name="groupIds" th:value="${g.id}">
-            <span th:text="${g.name}"></span>
-          </label>
-          <small class="muted" th:if="${groups.isEmpty()}">Cô cần tạo tổ/nhóm và xếp thành viên trong trang Quản trị trước.</small>
+          <span class="lbl">Bước 1: chọn lớp. Bước 2: chọn tổ/nhóm của lớp đó</span>
+          <div class="group-pick-row">
+            <select name="groupClassId" id="groupClass" aria-label="Chọn lớp">
+              <option value="">— Chọn lớp —</option>
+              <option th:each="c : ${groupClasses}" th:value="${c.id}" th:text="${c.name}"
+                      th:selected="${myClassId != null and myClassId == c.id}"></option>
+            </select>
+            <div class="group-picks" id="groupList">
+              <label th:each="g : ${allGroups}" class="scope-item" th:attr="data-class=${g.classRoom.id}" hidden>
+                <input type="checkbox" name="groupIds" th:value="${g.id}">
+                <span th:text="${g.name}"></span>
+              </label>
+            </div>
+          </div>
+          <small class="muted" id="groupHint">Chọn lớp để thấy các tổ của lớp đó.</small>
+          <small class="muted" th:if="${allGroups.isEmpty()}">Cô cần tạo tổ/nhóm và xếp thành viên trong trang Quản trị trước.</small>
         </div>
         <div class="f-classes" id="targetClasses" th:if="${!classes.isEmpty()}" style="grid-column:1/-1">
           <span class="lbl" style="display:block;font-size:.88rem;font-weight:600;margin-bottom:6px">Chọn một hoặc nhiều lớp</span>
@@ -80,6 +90,23 @@
         </div>
         <div class="f-submit"><button class="btn primary" type="submit">＋ Thêm nhiệm vụ</button></div>
       </form>
+    </section>
+
+    <section class="panel" th:if="${!groups.isEmpty()}">
+      <h2>⭐ Tổ trưởng</h2>
+      <p class="muted small">Chọn tổ trưởng cho từng tổ trong lớp của bạn. Tổ trưởng phải là thành viên của tổ đó.</p>
+      <div class="group-row" th:each="g : ${groups}">
+        <b th:text="${g.name}"></b>
+        <form th:action="@{/monitor/group/{id}/leader(id=${g.id})}" method="post" class="leader-form">
+          <select name="studentId" aria-label="Chọn tổ trưởng">
+            <option value="">— Chưa có tổ trưởng —</option>
+            <option th:each="st : ${groupMembers.get(g.id)}" th:value="${st.id}" th:text="${st.name}"
+                    th:selected="${g.leader != null and g.leader.id == st.id}"></option>
+          </select>
+          <button class="btn primary sm" type="submit">Lưu</button>
+        </form>
+        <small class="muted" th:if="${groupMembers.get(g.id).isEmpty()}">Tổ chưa có thành viên.</small>
+      </div>
     </section>
 
     <section class="panel">
@@ -138,6 +165,23 @@
     };
     scopeInputs.forEach(i => i.addEventListener('change', switchTarget));
     switchTarget();
+
+    // Giao riêng cho tổ: chỉ hiện các tổ thuộc lớp đang chọn
+    const groupClass = document.getElementById('groupClass');
+    const syncGroups = () => {
+      const cid = groupClass ? groupClass.value : '';
+      let any = false;
+      document.querySelectorAll('#groupList label').forEach(l => {
+        const ok = cid !== '' && l.dataset.class === cid;
+        l.hidden = !ok;
+        if (!ok) l.querySelector('input').checked = false;
+        if (ok) any = true;
+      });
+      const hint = document.getElementById('groupHint');
+      if (hint) hint.textContent = cid === '' ? 'Chọn lớp để thấy các tổ của lớp đó.'
+        : (any ? 'Chỉ học sinh thuộc các tổ đã chọn mới nhận bài này.' : 'Lớp này chưa có tổ/nhóm.');
+    };
+    if (groupClass) { groupClass.addEventListener('change', syncGroups); syncGroups(); }
     /* Xem trước ảnh/Word và báo lỗi trước khi gửi (tối đa 10 tệp, mỗi tệp 10 MB) */
     (function () {
       const inp = document.getElementById('taskFiles'), prev = document.getElementById('taskPrev'),

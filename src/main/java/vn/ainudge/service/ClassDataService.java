@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Student;
 import vn.ainudge.model.StudyGroup;
-import vn.ainudge.model.StudyGroup;
 import vn.ainudge.model.Task;
 import vn.ainudge.model.TaskProgress;
 import vn.ainudge.repo.ChatLogRepository;
@@ -132,10 +131,9 @@ public class ClassDataService {
             if (removedClass || removedGroup) tasks.save(t);
         }
         for (Student s : students.findAll().stream().filter(x -> x.isMemberOf(id)).toList()) {
-            s.classMemberships.removeIf(x -> x.id.equals(id));
             s.studyGroups.removeIf(g -> g.classRoom.id.equals(id));
-            if (s.classRoom != null && s.classRoom.id.equals(id))
-                s.classRoom = s.classMemberships.stream().findFirst().orElse(null);
+            s.classRoom = null; // lớp bị xóa: học sinh chuyển về trạng thái chưa xếp lớp
+            s.monitor = false;
             students.save(s);
         }
         groups.deleteAll(groups.findByClassRoom_IdOrderByNameAsc(id));
@@ -143,26 +141,88 @@ public class ClassDataService {
         return null;
     }
 
-    /** Thêm lớp, không tạo tài khoản/email mới; lớp mới được chọn làm lớp đang xem. */
-    public void setStudentClass(Long studentId, Long classId) {
-        if (classId == null) return;
-        students.findById(studentId).ifPresent(s -> classes.findById(classId).ifPresent(c -> {
-            if (s.classRoom != null) s.classMemberships.add(s.classRoom); // dữ liệu lớp cũ
-            s.classMemberships.add(c);
-            s.classRoom = c;
-            students.save(s);
-        }));
+    /**
+     * Đặt lớp duy nhất của học sinh (classId = null: chưa xếp lớp). Đổi sang lớp khác thì bỏ
+     * tổ/nhóm, chức tổ trưởng và quyền ban cán sự của lớp cũ.
+     */
+    public String setStudentClass(Long studentId, Long classId) {
+        Student s = students.findById(studentId).orElse(null);
+        if (s == null) return "Không tìm thấy học sinh.";
+        ClassRoom to = null;
+        if (classId != null) {
+            to = classes.findById(classId).orElse(null);
+            if (to == null) return "Lớp không hợp lệ.";
+        }
+        Long oldId = s.classRoom == null ? null : s.classRoom.id;
+        Long newId = to == null ? null : to.id;
+        if (java.util.Objects.equals(oldId, newId)) return null;
+        s.classRoom = to;
+        s.studyGroups.clear();
+        s.monitor = false;
+        students.save(s);
+        clearStaleLeaders(s);
+        return null;
     }
 
-    /** Bỏ một lớp; đồng thời bỏ các nhóm/tổ của lớp đó. */
-    public void removeStudentClass(Long studentId, Long classId) {
-        students.findById(studentId).ifPresent(s -> {
-            s.classMemberships.removeIf(c -> c.id.equals(classId));
-            s.studyGroups.removeIf(g -> g.classRoom.id.equals(classId));
-            if (s.classRoom != null && s.classRoom.id.equals(classId))
-                s.classRoom = s.classMemberships.stream().findFirst().orElse(null);
-            students.save(s);
-        });
+    /** Nếu học sinh không còn trong tổ mà em đang làm tổ trưởng thì bỏ chức tổ trưởng. */
+    private void clearStaleLeaders(Student s) {
+        for (StudyGroup grp : groups.findByLeader_Id(s.id)) {
+            boolean still = s.studyGroups.stream().anyMatch(x -> x.id.equals(grp.id))
+                    && s.isMemberOf(grp.classRoom.id);
+            if (!still) {
+                grp.leader = null;
+                groups.save(grp);
+            }
+        }
+    }
+
+    /** Đặt hoặc bỏ tổ trưởng. studentId = null nghĩa là bỏ tổ trưởng. */
+    public String setGroupLeader(Long groupId, Long studentId) {
+        StudyGroup grp = groups.findById(groupId).orElse(null);
+        if (grp == null) return "Không tìm thấy tổ/nhóm.";
+        if (studentId == null) {
+            grp.leader = null;
+            groups.save(grp);
+            return null;
+        }
+        Student st = students.findById(studentId).orElse(null);
+        if (st == null) return "Không tìm thấy học sinh.";
+        boolean inGroup = st.studyGroups.stream().anyMatch(x -> x.id.equals(grp.id));
+        if (!inGroup || !st.isMemberOf(grp.classRoom.id))
+            return "Tổ trưởng phải là thành viên của tổ này.";
+        grp.leader = st;
+        groups.save(grp);
+        return null;
+    }
+
+    /** Học sinh tự chọn tổ trong lớp đang xem (mỗi lớp chỉ một tổ; groupId = null là chưa chọn tổ). */
+    public void setMyGroup(Long studentId, Long groupId) {
+        Student st = students.findById(studentId).orElse(null);
+        if (st == null || st.classRoom == null) return;
+        Long classId = st.classRoom.id;
+        StudyGroup pick = groupId == null ? null : groups.findById(groupId).orElse(null);
+        if (pick != null && !pick.classRoom.id.equals(classId)) pick = null; // chỉ nhận tổ của lớp đang xem
+        st.studyGroups.removeIf(x -> x.classRoom.id.equals(classId));
+        if (pick != null) st.studyGroups.add(pick);
+        students.save(st);
+        clearStaleLeaders(st);
+    }
+
+    /** Người quản trị xếp một học sinh vào một tổ của một lớp (mỗi lớp chỉ một tổ; groupId = null là bỏ tổ). */
+    public String setStudentGroupInClass(Long studentId, Long classId, Long groupId) {
+        Student st = students.findById(studentId).orElse(null);
+        if (st == null) return "Không tìm thấy học sinh.";
+        if (!st.isMemberOf(classId)) return "Học sinh chưa thuộc lớp này.";
+        StudyGroup pick = null;
+        if (groupId != null) {
+            pick = groups.findById(groupId).orElse(null);
+            if (pick == null || !pick.classRoom.id.equals(classId)) return "Tổ/nhóm không thuộc lớp này.";
+        }
+        st.studyGroups.removeIf(x -> x.classRoom.id.equals(classId));
+        if (pick != null) st.studyGroups.add(pick);
+        students.save(st);
+        clearStaleLeaders(st);
+        return null;
     }
 
     public String createGroup(Long classId, String rawName) {
@@ -202,9 +262,14 @@ public class ClassDataService {
         var chosen = groupIds == null ? List.<StudyGroup>of() : groups.findAllById(groupIds);
         if (chosen.stream().anyMatch(g -> !s.isMemberOf(g.classRoom.id)))
             return "Học sinh cần được thêm vào lớp trước khi xếp tổ/nhóm.";
+        HashSet<Long> seenClass = new HashSet<>();
+        for (StudyGroup g : chosen)
+            if (!seenClass.add(g.classRoom.id))
+                return "Mỗi học sinh chỉ thuộc một tổ/nhóm trong mỗi lớp.";
         s.studyGroups.clear();
         s.studyGroups.addAll(chosen);
         students.save(s);
+        clearStaleLeaders(s);
         return null;
     }
 
@@ -279,9 +344,8 @@ public class ClassDataService {
             Student ex = email.isEmpty() ? null : students.findFirstByEmailIgnoreCase(email).orElse(null);
             if (ex == null) ex = students.findByNameIgnoreCase(n).orElse(null);
             if (ex != null) {
-                if (cls != null) {
-                    ex.classMemberships.add(cls);
-                    if (ex.classRoom == null) ex.classRoom = cls;
+                if (cls != null && ex.classRoom == null) { // mỗi học sinh chỉ một lớp: không tự đổi lớp
+                    ex.classRoom = cls;
                     students.save(ex);
                 }
                 continue; // cùng email vẫn là một tài khoản
@@ -292,7 +356,6 @@ public class ClassDataService {
             s.password = pw.matches("\\S{4,20}") ? pw : newPassword();
             s.email = email.isEmpty() ? null : email;
             s.classRoom = cls;
-            if (cls != null) s.classMemberships.add(cls);
             students.save(s);
             added++;
         }
@@ -319,6 +382,10 @@ public class ClassDataService {
         for (Task t : tasks.findByCreatedBy_Id(id)) {
             t.createdBy = null;
             tasks.save(t);
+        }
+        for (StudyGroup grp : groups.findByLeader_Id(id)) { // gỡ chức tổ trưởng trước khi xóa học sinh
+            grp.leader = null;
+            groups.save(grp);
         }
         students.findById(id).ifPresent(students::delete);
     }

@@ -3,7 +3,6 @@ package vn.ainudge.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -39,17 +38,11 @@ public class Student {
     public boolean monitor;
 
     /**
-     * Lớp của học sinh (chọn khi đăng ký, tự ghi danh sau, hoặc người quản trị xếp
-     * lớp). null = chưa vào lớp nào.
+     * Lớp duy nhất của học sinh (chọn khi đăng ký, hoặc người quản trị xếp lớp).
+     * null = chưa vào lớp nào.
      */
     @ManyToOne
     public ClassRoom classRoom;
-
-    /** Các lớp đã ghi danh; classRoom phía trên là lớp đang mở (giữ tương thích dữ liệu cũ). */
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "student_class", joinColumns = @JoinColumn(name = "student_id"),
-            inverseJoinColumns = @JoinColumn(name = "class_room_id"))
-    public Set<ClassRoom> classMemberships = new HashSet<>();
 
     /** Nhóm/tổ học sinh tham gia (mỗi nhóm nằm trong một lớp). */
     @ManyToMany(fetch = FetchType.EAGER)
@@ -57,11 +50,9 @@ public class Student {
             inverseJoinColumns = @JoinColumn(name = "study_group_id"))
     public Set<StudyGroup> studyGroups = new HashSet<>();
 
+    /** Mỗi học sinh chỉ thuộc một lớp (classRoom). Giữ dạng tập hợp để các chỗ cũ vẫn dùng được. */
     public Set<ClassRoom> joinedClasses() {
-        Set<ClassRoom> result = new LinkedHashSet<>();
-        if (classRoom != null) result.add(classRoom); // dữ liệu cũ vẫn hoạt động
-        if (classMemberships != null) result.addAll(classMemberships);
-        return result;
+        return classRoom == null ? Set.of() : Set.of(classRoom);
     }
 
     public boolean isMemberOf(Long classId) {

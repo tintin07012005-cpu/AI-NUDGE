@@ -9,6 +9,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,6 +26,7 @@ import vn.ainudge.dto.MemberRow;
 import vn.ainudge.dto.TaskRow;
 import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Student;
+import vn.ainudge.model.StudyGroup;
 import vn.ainudge.model.Task;
 import vn.ainudge.model.TaskProgress;
 import vn.ainudge.repo.ClassRoomRepository;
@@ -33,6 +37,7 @@ import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.repo.TaskProgressRepository;
 import vn.ainudge.repo.TaskRepository;
 import vn.ainudge.service.Eval;
+import vn.ainudge.service.ClassDataService;
 import vn.ainudge.service.ProofService;
 import vn.ainudge.service.RememberService;
 import vn.ainudge.service.Script;
@@ -57,11 +62,13 @@ public class MonitorController {
     private final RememberService remember;
     private final ClassRoomRepository classRooms;
     private final StudyGroupRepository groups;
+    private final ClassDataService data;
 
     public MonitorController(StudentRepository students, TaskRepository tasks, TaskProgressRepository progresses,
             ProofImageRepository images, TaskImageRepository taskImages, ProofService proof,
             RememberService remember, vn.ainudge.service.AppCredentialService credentials,
-            ClassRoomRepository classRooms, StudyGroupRepository groups) {
+            ClassRoomRepository classRooms, StudyGroupRepository groups, ClassDataService data) {
+        this.data = data;
         this.groups = groups;
         this.classRooms = classRooms;
         this.credentials = credentials;
@@ -139,6 +146,24 @@ public class MonitorController {
         model.addAttribute("groups", m.classRoom == null ? List.of()
                 : groups.findByClassRoom_IdOrderByNameAsc(m.classRoom.id));
         model.addAttribute("myClassId", m.classRoom == null ? null : m.classRoom.id);
+        List<StudyGroup> classGroupList = m.classRoom == null ? List.of()
+                : groups.findByClassRoom_IdOrderByNameAsc(m.classRoom.id);
+        Map<Long, List<Student>> groupMembers = new HashMap<>();
+        for (StudyGroup grp : classGroupList)
+            groupMembers.put(grp.id, allStudents.stream()
+                    .filter(st -> st.studyGroups.stream().anyMatch(x -> x.id.equals(grp.id)))
+                    .sorted(Comparator.comparing((Student st) -> st.name, String.CASE_INSENSITIVE_ORDER)).toList());
+        model.addAttribute("groupMembers", groupMembers);
+        // Giao riêng cho tổ: chọn lớp trước, rồi chọn tổ của lớp đó (mỗi lớp có tổ riêng, trùng tên cũng được)
+        List<StudyGroup> allGroups = groups.findAll().stream()
+                .sorted(Comparator.comparing((StudyGroup g) -> g.classRoom.name, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing((StudyGroup g) -> g.name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+        Map<Long, ClassRoom> groupClassMap = new LinkedHashMap<>();
+        for (StudyGroup g : allGroups)
+            groupClassMap.putIfAbsent(g.classRoom.id, g.classRoom);
+        model.addAttribute("allGroups", allGroups);
+        model.addAttribute("groupClasses", new ArrayList<>(groupClassMap.values()));
         model.addAttribute("rows", rows);
         model.addAttribute("defaultDeadline", LocalDate.now().atTime(21, 0).toString());
         if (tooBig != null)
@@ -152,6 +177,7 @@ public class MonitorController {
             @RequestParam(value = "classIds", required = false) List<Long> classIds,
             @RequestParam(defaultValue = "class") String scope,
             @RequestParam(value = "groupIds", required = false) List<Long> groupIds,
+            @RequestParam(value = "groupClassId", required = false) Long groupClassId,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,
             HttpSession session, RedirectAttributes ra) {
         Student m = monitor(session);
@@ -176,10 +202,9 @@ public class MonitorController {
                     return "redirect:/monitor";
                 }
                 var chosen = groups.findAllById(groupIds);
-                if (chosen.size() != new java.util.HashSet<>(groupIds).size()
-                        || m.classRoom == null
-                        || chosen.stream().anyMatch(g -> !g.classRoom.id.equals(m.classRoom.id))) {
-                    ra.addFlashAttribute("msg", "Bạn chỉ được giao nhiệm vụ cho tổ/nhóm của lớp đang mở.");
+                if (groupClassId == null || chosen.size() != new java.util.HashSet<>(groupIds).size()
+                        || chosen.stream().anyMatch(g -> !g.classRoom.id.equals(groupClassId))) {
+                    ra.addFlashAttribute("msg", "Hãy chọn lớp, rồi chọn tổ/nhóm thuộc đúng lớp đó.");
                     return "redirect:/monitor";
                 }
                 t.studyGroups.addAll(chosen);
@@ -210,6 +235,23 @@ public class MonitorController {
     }
 
     /** Thêm ảnh đề cho một nhiệm vụ đã tạo. */
+    /** Ban cán sự phân (hoặc bỏ) tổ trưởng cho tổ thuộc lớp của mình. */
+    @PostMapping("/group/{id}/leader")
+    public String setLeader(@PathVariable Long id, @RequestParam(required = false) Long studentId,
+            HttpSession session, RedirectAttributes ra) {
+        Student m = monitor(session);
+        if (m == null)
+            return "redirect:/monitor";
+        StudyGroup grp = groups.findById(id).orElse(null);
+        if (grp == null || !m.isMemberOf(grp.classRoom.id)) {
+            ra.addFlashAttribute("msg", "Bạn chỉ phân tổ trưởng cho các tổ thuộc lớp của mình.");
+            return "redirect:/monitor";
+        }
+        String err = data.setGroupLeader(id, studentId);
+        ra.addFlashAttribute("msg", err == null ? "Đã lưu tổ trưởng." : err);
+        return "redirect:/monitor";
+    }
+
     @PostMapping("/task/{id}/images")
     public String addImages(@PathVariable Long id,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,

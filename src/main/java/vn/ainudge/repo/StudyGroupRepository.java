@@ -8,4 +8,5 @@ import vn.ainudge.model.StudyGroup;
 public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
     List<StudyGroup> findByClassRoom_IdOrderByNameAsc(Long classId);
     Optional<StudyGroup> findByClassRoom_IdAndNameIgnoreCase(Long classId, String name);
+    List<StudyGroup> findByLeader_Id(Long studentId);
 }

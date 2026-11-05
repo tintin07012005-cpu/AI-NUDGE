@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI-Nudge</title><link rel="stylesheet" href="/style.css">
+  <title>AI-Nudge</title><link rel="stylesheet" href="/style.css?v=4">
 </head>
 <body class="center">
   <div class="panel narrow">
@@ -31,6 +31,14 @@
         <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"
                 th:selected="${regClass != null and regClass == c.id}"></option>
       </select>
+      <div id="regGroupBox" hidden style="display:none;flex-wrap:wrap;gap:8px;align-items:center">
+        <span class="muted small" style="width:100%">Tổ của bạn trong lớp (chọn 1, không bắt buộc):</span>
+        <label class="reg-group"><input type="radio" name="groupId" value="" th:checked="${regGroup == null}"><span>Chưa chọn</span></label>
+        <label class="reg-group" th:each="g : ${groups}" th:attr="data-class=${g.classRoom.id}" hidden>
+          <input type="radio" name="groupId" th:value="${g.id}" th:checked="${regGroup != null and regGroup == g.id}">
+          <span th:text="${g.name}"></span>
+        </label>
+      </div>
       <p class="err" th:if="${error != null and mode == 'register'}" th:text="${error}"></p>
       <button class="btn primary" type="submit" style="width:100%">Tạo tài khoản ✨</button>
     </form>
@@ -38,6 +46,28 @@
     <p class="muted small" style="text-align:center"><a href="/teacher/login">Dành cho người quản trị</a></p>
   </div>
 
+  <script>
+    // Chỉ hiện các tổ/nhóm thuộc lớp đang chọn ở form đăng ký
+    (function () {
+      var sel = document.querySelector('#f-register select[name=classId]');
+      var box = document.getElementById('regGroupBox');
+      if (!sel || !box) return;
+      function sync() {
+        var any = false;
+        box.querySelectorAll('.reg-group[data-class]').forEach(function (l) {
+          var ok = sel.value && l.getAttribute('data-class') === sel.value;
+          l.hidden = !ok;
+          if (!ok) l.querySelector('input').checked = false;
+          if (ok) any = true;
+        });
+        var none = box.querySelector('input[value=""]');
+        if (none && !box.querySelector('input[name=groupId]:checked')) none.checked = true;
+        box.style.display = any ? 'flex' : 'none';
+      }
+      sel.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
   <script th:inline="javascript">
     function show(m) {
       document.getElementById('f-login').hidden = m !== 'login';

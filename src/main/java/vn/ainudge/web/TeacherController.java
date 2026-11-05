@@ -29,6 +29,7 @@ import vn.ainudge.model.ChatLog;
 import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Conversation;
 import vn.ainudge.model.Student;
+import vn.ainudge.model.StudyGroup;
 import vn.ainudge.model.Task;
 import vn.ainudge.model.TaskProgress;
 import vn.ainudge.repo.ChatLogRepository;
@@ -297,7 +298,20 @@ public class TeacherController {
             studentGroups.add(new StudentGroup("Chưa có lớp", noClass));
 
         model.addAttribute("classes", classList);
-        model.addAttribute("groups", groups.findAll());
+        List<StudyGroup> allGroups = groups.findAll();
+        model.addAttribute("groups", allGroups);
+        Map<Long, List<Student>> groupMembers = new HashMap<>();
+        for (StudyGroup grp : allGroups)
+            groupMembers.put(grp.id, allStudents.stream()
+                    .filter(st -> st.studyGroups.stream().anyMatch(x -> x.id.equals(grp.id)))
+                    .sorted(Comparator.comparing((Student st) -> st.name, String.CASE_INSENSITIVE_ORDER)).toList());
+        model.addAttribute("groupMembers", groupMembers);
+        Map<Long, List<StudyGroup>> groupsByClass = new HashMap<>();
+        for (StudyGroup grp : allGroups)
+            groupsByClass.computeIfAbsent(grp.classRoom.id, k -> new java.util.ArrayList<>()).add(grp);
+        groupsByClass.values().forEach(l -> l.sort(
+                Comparator.comparing((StudyGroup x) -> x.name, String.CASE_INSENSITIVE_ORDER)));
+        model.addAttribute("groupsByClass", groupsByClass);
         Map<Long, List<Long>> studentClassIds = new HashMap<>();
         Map<Long, List<Long>> studentGroupIds = new HashMap<>();
         for (Student s : allStudents) {
@@ -381,13 +395,6 @@ public class TeacherController {
     }
 
     /** Bỏ lớp của riêng một học sinh, không xóa tài khoản. */
-    @PostMapping("/student/{id}/class/remove")
-    public String removeStudentClass(@PathVariable Long id, @RequestParam Long classId, RedirectAttributes ra) {
-        data.removeStudentClass(id, classId);
-        ra.addFlashAttribute("msg", "Đã bỏ học sinh khỏi lớp đã chọn.");
-        return "redirect:/teacher";
-    }
-
     /** Tạo tổ/nhóm thuộc một lớp. */
     @PostMapping("/group")
     public String createGroup(@RequestParam Long classId, @RequestParam String name, RedirectAttributes ra) {
@@ -400,6 +407,24 @@ public class TeacherController {
     public String deleteGroup(@PathVariable Long id, RedirectAttributes ra) {
         String err = data.deleteGroup(id);
         ra.addFlashAttribute("msg", err == null ? "Đã xóa tổ/nhóm." : err);
+        return "redirect:/teacher";
+    }
+
+    /** Phân (hoặc bỏ) tổ trưởng của một tổ. */
+    @PostMapping("/group/{id}/leader")
+    public String setGroupLeader(@PathVariable Long id, @RequestParam(required = false) Long studentId,
+            RedirectAttributes ra) {
+        String err = data.setGroupLeader(id, studentId);
+        ra.addFlashAttribute("msg", err == null ? "Đã lưu tổ trưởng." : err);
+        return "redirect:/teacher";
+    }
+
+    /** Xếp một học sinh vào một tổ trong một lớp (mỗi lớp chỉ một tổ). */
+    @PostMapping("/student/{id}/group")
+    public String setStudentGroup(@PathVariable Long id, @RequestParam Long classId,
+            @RequestParam(required = false) Long groupId, RedirectAttributes ra) {
+        String err = data.setStudentGroupInClass(id, classId, groupId);
+        if (err != null) ra.addFlashAttribute("msg", err);
         return "redirect:/teacher";
     }
 
@@ -431,8 +456,8 @@ public class TeacherController {
     @PostMapping("/student/{id}/class")
     public String setStudentClass(@PathVariable Long id, @RequestParam(required = false) Long classId,
             RedirectAttributes ra) {
-        data.setStudentClass(id, classId);
-        ra.addFlashAttribute("msg", "Đã cập nhật lớp của học sinh");
+        String err = data.setStudentClass(id, classId);
+        ra.addFlashAttribute("msg", err == null ? "Đã cập nhật lớp của học sinh." : err);
         return "redirect:/teacher";
     }
 

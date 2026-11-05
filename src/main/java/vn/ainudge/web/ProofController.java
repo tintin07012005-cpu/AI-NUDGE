@@ -17,6 +17,7 @@ import vn.ainudge.model.Student;
 import vn.ainudge.model.TaskImage;
 import vn.ainudge.repo.ProofImageRepository;
 import vn.ainudge.repo.StudentRepository;
+import vn.ainudge.repo.StudyGroupRepository;
 import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.service.ProofService;
 
@@ -30,9 +31,11 @@ public class ProofController {
     private final StudentRepository students;
     private final ProofService proof;
     private final TaskImageRepository taskImages;
+    private final StudyGroupRepository studyGroups;
 
     public ProofController(ProofImageRepository images, StudentRepository students, ProofService proof,
-            TaskImageRepository taskImages) {
+            TaskImageRepository taskImages, StudyGroupRepository studyGroups) {
+        this.studyGroups = studyGroups;
         this.images = images;
         this.taskImages = taskImages;
         this.students = students;
@@ -51,7 +54,9 @@ public class ProofController {
             if (me != null) {
                 boolean owner = im.progress.student.id.equals(me.id);
                 boolean monitor = me.monitor && session.getAttribute("monitorOk") != null;
-                ok = owner || monitor;
+                boolean leader = !owner && !monitor && studyGroups.findByLeader_Id(me.id).stream()
+                        .anyMatch(g -> im.progress.student.studyGroups.stream().anyMatch(x -> x.id.equals(g.id)));
+                ok = owner || monitor || leader; // tổ trưởng xem ảnh của tổ viên trong tổ mình
             }
         }
         if (!ok)

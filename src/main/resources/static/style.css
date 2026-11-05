@@ -391,3 +391,83 @@ td a:hover{text-decoration:underline}
  .class-switch {gap:8px}
  .class-switch-form select {max-width:200px}
 }
+
+/* Học sinh tự chọn tổ/nhóm */
+.group-pick-form {gap:6px}
+.group-chip, .reg-group {display:inline-flex;align-items:center;gap:4px;padding:3px 10px 3px 8px;border:1.5px solid #bbf7d0;border-radius:999px;background:#fff;cursor:pointer;font-size:.85rem;line-height:1.3;white-space:nowrap;width:auto}
+.reg-group {border-color:#ddd6fe}
+.group-chip:has(input:checked) {background:#dcfce7;border-color:#4ade80;font-weight:600}
+.reg-group:has(input:checked) {background:#ede9fe;border-color:#a78bfa;font-weight:600}
+.group-chip input, .reg-group input, .notice .group-chip input {flex:none !important;width:15px !important;height:15px;min-width:0 !important;padding:0 !important;margin:0;border:0;box-shadow:none;accent-color:#16a34a}
+.reg-group input {accent-color:#7c3aed}
+.group-pick-form .btn.sm {padding:4px 12px;font-size:.8rem}
+.reg-group[hidden] {display:none}
+
+/* Tổ trưởng, rời lớp / chuyển lớp */
+.leader-tag {font-size:.75rem;color:#92400e;font-weight:600}
+.class-manage {flex-basis:100%;font-size:.85rem}
+.class-manage summary {cursor:pointer;color:#5b21b6;font-weight:600;width:fit-content}
+.class-manage-row {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:6px 0 0}
+.class-manage-row > span {min-width:110px;font-weight:600}
+.class-manage .btn.sm {padding:4px 12px;font-size:.8rem}
+.btn.leave-btn {background:#fff;border:1.5px solid #fca5a5;color:#b91c1c}
+.group-row {display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:8px 0;border-top:1px solid #ede9fe}
+.group-row:first-of-type {border-top:0}
+.group-row > b {min-width:120px}
+.leader-form {display:flex;align-items:center;gap:6px;margin:0}
+.leader-form select {min-height:34px;padding:4px 10px;border:1.5px solid #c8b8ff;border-radius:10px;background:#fff;font:inherit;max-width:240px}
+.group-row .btn.sm {padding:4px 12px;font-size:.8rem}
+
+/* ---------- Làm gọn ô chọn (dropdown), nút nhỏ và bảng quản trị ---------- */
+select{padding:7px 10px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:inherit;cursor:pointer;max-width:100%}
+select:focus{outline:none;border-color:var(--brand2);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+select:hover{border-color:#c8b8ff}
+
+/* chip lớp của học sinh + nút × tròn nhỏ */
+.member-class{display:inline-flex;align-items:center;gap:6px;margin:0 6px 6px 0;padding:3px 4px 3px 11px;border:1.5px solid #ddd6fe;border-radius:999px;background:#f5f3ff;color:#5b21b6;font-size:.85rem;font-weight:600;white-space:nowrap}
+.member-class form{display:inline-flex;margin:0}
+.member-class .x{display:inline-grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#ede9fe;color:#7c3aed;font-size:.95rem;line-height:1;cursor:pointer;transition:.15s}
+.member-class .x:hover{background:#fecaca;color:#b91c1c}
+
+/* ô "+ Thêm lớp" trong bảng */
+td .inline-form select{padding:4px 10px;border-style:dashed;border-color:#c8b8ff;border-radius:999px;color:var(--brand);font-size:.82rem;font-weight:600;background:#faf8ff}
+
+/* "Xếp tổ/nhóm" dạng nút bấm, mở ra là một thẻ nhỏ */
+.grp-details{margin:0;position:relative}
+.grp-details>summary{display:inline-block;list-style:none;padding:4px 12px;border:1.5px solid #ddd6fe;border-radius:999px;background:#faf8ff;color:var(--brand);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.grp-details>summary::-webkit-details-marker{display:none}
+.grp-details>summary:hover,.grp-details[open]>summary{background:#ede9fe}
+.grp-details form{margin-top:8px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
+.grp-details label{display:flex!important;align-items:center;gap:6px;margin:4px 0;font-size:.85rem;white-space:nowrap}
+.grp-details input[type=checkbox]{width:16px;height:16px;padding:0;accent-color:var(--brand2)}
+.grp-details .btn{margin-top:6px}
+
+/* nút nhỏ trong bảng gọn và đều nhau */
+td .btn.sm{padding:4px 11px;border-radius:999px;font-size:.8rem;white-space:nowrap}
+td .btn.sm.primary{box-shadow:none}
+.pwform .btn.sm{padding:4px 9px}
+
+/* hàng tổ/nhóm của giáo viên và ban cán sự */
+.group-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:9px 0;border-top:1px solid #ede9fe}
+.group-row > b{min-width:130px}
+.group-row .inline-form{margin:0;margin-left:auto}
+
+/* Giao riêng cho tổ: chọn lớp rồi chọn tổ */
+.scope-item[hidden]{display:none}
+.group-pick-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:6px 0}
+.group-picks{display:flex;flex-wrap:wrap;gap:4px}
+.f-groups select{min-width:160px}
+/* Form tạo nhóm của giáo viên */
+.group-create-form{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.group-create-form select{min-width:150px}
+.group-create-form input{width:260px;max-width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:12px;font:inherit}
+
+/* Bảng quản trị: mỗi lớp một dòng, ô chọn tổ nằm ngay cạnh lớp */
+.class-line{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.class-line .member-class{margin:0}
+td .class-group-form{margin:0}
+td .class-group-form select{border-style:solid;border-color:#ddd6fe;background:#fff;color:var(--ink);font-weight:500}
+
+/* Mỗi học sinh một lớp */
+.class-name{font-size:.9rem}
+td .class-one-form select{border-style:solid;border-color:#ddd6fe;background:#f5f3ff;color:#5b21b6;font-weight:600;font-size:.85rem}

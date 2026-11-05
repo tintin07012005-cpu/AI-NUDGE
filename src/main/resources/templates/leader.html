@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tổ trưởng - AI-Nudge</title>
+  <link rel="stylesheet" href="/style.css?v=4">
+</head>
+
+<body>
+  <header class="top staff-top"><b>AI-Nudge · Tổ trưởng</b>
+    <div class="t-actions"><a class="nav" th:href="@{/student}">← Về trang của mình</a></div>
+  </header>
+
+  <main class="wide">
+    <section class="panel">
+      <h2>⭐ Tổ của bạn</h2>
+      <p class="muted">Xin chào <b th:text="${name}"></b>. Bạn là tổ trưởng của: <b th:text="${groupNames}"></b>
+        (<span th:text="${memberCount}"></span> bạn trong tổ, không tính bạn).</p>
+      <p class="muted small">Bạn xem và xác nhận bài đã nộp cho các bạn trong tổ mình. Bạn không xác nhận cho chính
+        mình, việc đó do ban cán sự làm.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Nhiệm vụ gần đây của tổ</h2>
+      <p class="empty" th:if="${memberCount == 0}">Tổ của bạn hiện chưa có bạn nào khác nên chưa có ai để xác nhận bài.
+        Hãy nhờ giáo viên hoặc các bạn trong lớp vào tổ này (mục "Tổ" ở trang của mỗi bạn).</p>
+      <p class="empty" th:if="${memberCount > 0 and rows.isEmpty()}">Chưa có nhiệm vụ nào dành cho tổ bạn.</p>
+      <div class="scroll-x" th:unless="${rows.isEmpty()}">
+        <table>
+          <tr>
+            <th>Nhiệm vụ</th>
+            <th>Hạn nộp</th>
+            <th>Các bạn báo xong</th>
+            <th>Đã xác nhận nộp</th>
+            <th></th>
+          </tr>
+          <tr th:each="r : ${rows}">
+            <td th:text="${r.label()}"></td>
+            <td th:text="${r.deadline()}"></td>
+            <td th:text="${r.done()} + ' / ' + ${r.total()}"></td>
+            <td th:text="${r.confirmed()} + ' / ' + ${r.total()}"></td>
+            <td><a class="btn sm primary" th:href="@{/student/leader/task/{id}(id=${r.id()})}">Xác nhận nộp bài</a></td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+
+</html>

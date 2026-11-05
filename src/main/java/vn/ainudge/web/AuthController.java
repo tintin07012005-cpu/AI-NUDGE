@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,8 +16,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Student;
+import vn.ainudge.model.StudyGroup;
 import vn.ainudge.repo.ClassRoomRepository;
 import vn.ainudge.repo.StudentRepository;
+import vn.ainudge.repo.StudyGroupRepository;
 import vn.ainudge.service.NotifyService;
 import vn.ainudge.service.RememberService;
 
@@ -27,11 +31,13 @@ public class AuthController {
 
     private final vn.ainudge.service.AppCredentialService credentials;
     private final ClassRoomRepository classRooms;
+    private final StudyGroupRepository studyGroups;
 
     public AuthController(StudentRepository students, RememberService remember, NotifyService notify,
             vn.ainudge.service.AppCredentialService credentials,
-            ClassRoomRepository classRooms) {
+            ClassRoomRepository classRooms, StudyGroupRepository studyGroups) {
         this.classRooms = classRooms;
+        this.studyGroups = studyGroups;
         this.credentials = credentials;
         this.students = students;
         this.notify = notify;
@@ -45,6 +51,13 @@ public class AuthController {
     @ModelAttribute("classes")
     public List<ClassRoom> classList() {
         return classRooms.findAllByOrderByNameAsc();
+    }
+
+    /** Danh sách tổ/nhóm của mọi lớp, để form đăng ký lọc theo lớp đã chọn. */
+    @ModelAttribute("groups")
+    public List<StudyGroup> groupList() {
+        return studyGroups.findAll().stream()
+                .sorted(java.util.Comparator.comparing(g -> g.name, String.CASE_INSENSITIVE_ORDER)).toList();
     }
 
     /**
@@ -92,6 +105,7 @@ public class AuthController {
     public String register(@RequestParam String name, @RequestParam String email,
             @RequestParam String password, @RequestParam(defaultValue = "") String password2,
             @RequestParam(required = false) Long classId,
+            @RequestParam(required = false) Long groupId,
             HttpServletRequest req, HttpServletResponse res, HttpSession session, Model model) {
         String n = name == null ? "" : name.trim().replaceAll("\\s+", " ");
         String em = email == null ? "" : email.trim().toLowerCase();
@@ -100,6 +114,7 @@ public class AuthController {
         model.addAttribute("regName", n);
         model.addAttribute("regEmail", em);
         model.addAttribute("regClass", classId);
+        model.addAttribute("regGroup", groupId);
         if (n.isEmpty() || n.length() > 60) {
             model.addAttribute("error", "Bạn hãy nhập tên (tối đa 60 ký tự) nhé.");
             return "login";
@@ -134,7 +149,10 @@ public class AuthController {
         s.name = n;
         s.email = em;
         s.classRoom = cls;
-        if (cls != null) s.classMemberships.add(cls);
+        if (cls != null && groupId != null) { // mỗi lớp chỉ một tổ, và tổ phải thuộc đúng lớp đã chọn
+            StudyGroup picked = studyGroups.findById(groupId).orElse(null);
+            if (picked != null && picked.classRoom.id.equals(cls.id)) s.studyGroups.add(picked);
+        }
         s.password = pw;
         s.createdAt = LocalDateTime.now();
         s = students.save(s);
