@@ -41,9 +41,24 @@
         <label class="f-deadline"><span>Hạn nộp</span>
           <input type="datetime-local" name="deadline" th:value="${defaultDeadline}" required>
         </label>
-        <div class="f-classes" th:if="${!classes.isEmpty()}" style="grid-column:1/-1">
-          <span class="lbl" style="display:block;font-size:.88rem;font-weight:600;margin-bottom:6px">Giao cho lớp <small
-              class="muted">(chọn một hoặc nhiều lớp; bỏ chọn hết = giao cho tất cả học sinh)</small></span>
+        <div class="task-scope" style="grid-column:1/-1">
+          <span class="lbl">Giao nhiệm vụ cho ai?</span>
+          <div class="scope-choices">
+            <label><input type="radio" name="scope" value="class" th:checked="${!classes.isEmpty()}" th:disabled="${classes.isEmpty()}"> Cả lớp</label>
+            <label><input type="radio" name="scope" value="group" th:disabled="${groups.isEmpty()}"> Chỉ tổ/nhóm</label>
+            <label><input type="radio" name="scope" value="all" th:checked="${classes.isEmpty()}"> Tất cả các lớp</label>
+          </div>
+        </div>
+        <div class="f-groups" id="targetGroups" hidden style="grid-column:1/-1">
+          <span class="lbl">Chỉ học sinh thuộc các tổ/nhóm đã chọn mới nhận bài này</span>
+          <label th:each="g : ${groups}" class="scope-item">
+            <input type="checkbox" name="groupIds" th:value="${g.id}">
+            <span th:text="${g.name}"></span>
+          </label>
+          <small class="muted" th:if="${groups.isEmpty()}">Cô cần tạo tổ/nhóm và xếp thành viên trong trang Quản trị trước.</small>
+        </div>
+        <div class="f-classes" id="targetClasses" th:if="${!classes.isEmpty()}" style="grid-column:1/-1">
+          <span class="lbl" style="display:block;font-size:.88rem;font-weight:600;margin-bottom:6px">Chọn một hoặc nhiều lớp</span>
           <label th:each="c : ${classes}"
             style="display:inline-flex;align-items:center;gap:6px;margin:0 16px 6px 0;cursor:pointer">
             <input type="checkbox" name="classIds" th:value="${c.id}"
@@ -112,6 +127,17 @@
     </section>
   </main>
   <script>
+    /* Phạm vi giao: chọn rõ cả lớp / tổ nhóm / tất cả, không vô tình giao nhầm. */
+    const scopeInputs = document.querySelectorAll('input[name="scope"]');
+    const switchTarget = () => {
+      const v = document.querySelector('input[name="scope"]:checked')?.value;
+      const groups = document.getElementById('targetGroups');
+      const classes = document.getElementById('targetClasses');
+      if (groups) groups.hidden = v !== 'group';
+      if (classes) classes.hidden = v !== 'class';
+    };
+    scopeInputs.forEach(i => i.addEventListener('change', switchTarget));
+    switchTarget();
     /* Xem trước ảnh/Word và báo lỗi trước khi gửi (tối đa 10 tệp, mỗi tệp 10 MB) */
     (function () {
       const inp = document.getElementById('taskFiles'), prev = document.getElementById('taskPrev'),

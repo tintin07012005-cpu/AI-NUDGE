@@ -25,6 +25,22 @@
       <span id="notifText"></span>
       <button class="btn primary sm" id="notifBtn" type="button" hidden>Cho phép thông báo</button>
     </div>
+    <div class="notice class-switch" th:if="${!joinedClasses.isEmpty()}">
+      <form th:action="@{/student/class/select}" method="post" class="class-switch-form">
+        <span>🏫 Lớp đang xem:</span>
+        <select name="classId" onchange="this.form.submit()" aria-label="Chuyển lớp">
+          <option th:each="c : ${joinedClasses}" th:value="${c.id}" th:text="${c.name}"
+                  th:selected="${activeClassId != null and activeClassId == c.id}"></option>
+        </select>
+      </form>
+      <form th:if="${!availableClasses.isEmpty()}" th:action="@{/student/class}" method="post" class="class-switch-form">
+        <select name="classId" required aria-label="Thêm lớp">
+          <option value="">＋ Chọn lớp muốn tham gia</option>
+          <option th:each="c : ${availableClasses}" th:value="${c.id}" th:text="${c.name}"></option>
+        </select>
+        <button type="submit" class="btn primary sm">Thêm lớp</button>
+      </form>
+    </div>
     <div id="classBar" class="notice warn" th:if="${needClass}">
       <form th:action="@{/student/class}" method="post"
         style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0">
@@ -59,6 +75,22 @@
         <span id="loadPercent">Đang tải dữ liệu · 0%</span>
       </div>
       <div id="taskbar"></div>
+      <section id="weekPlan" class="week-plan" aria-label="Bảng kế hoạch nhiệm vụ trong tuần">
+        <div class="week-plan-head">
+          <div><div class="week-eyebrow">📅 KẾ HOẠCH HỌC TẬP</div>
+            <strong>Nhiệm vụ trong tuần</strong>
+            <small id="weekRange">Đang tải lịch tuần...</small>
+          </div>
+          <button type="button" class="week-toggle" id="weekToggle" aria-expanded="true">Thu gọn ▴</button>
+        </div>
+        <div id="weekContent">
+          <div class="week-progress"><span id="weekSummary">Đang kiểm tra tiến độ</span>
+            <span id="weekPercent">0%</span></div>
+          <div class="week-track"><div id="weekBar" class="week-fill"></div></div>
+          <div id="weekItems" class="week-items"></div>
+          <p class="week-hint">Bấm vào nhiệm vụ để xem ảnh hoặc tệp Word đính kèm. Trạng thái được cập nhật riêng cho bạn.</p>
+        </div>
+      </section>
       <div id="chat"></div>
       <div id="opts"></div>
       <div id="timeRow" hidden>

@@ -134,6 +134,7 @@ public class AuthController {
         s.name = n;
         s.email = em;
         s.classRoom = cls;
+        if (cls != null) s.classMemberships.add(cls);
         s.password = pw;
         s.createdAt = LocalDateTime.now();
         s = students.save(s);

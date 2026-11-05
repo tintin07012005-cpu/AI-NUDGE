@@ -342,3 +342,52 @@ td a:hover{text-decoration:underline}
 .security-grid label{display:flex;flex-direction:column;gap:5px;font-size:.92rem}
 .security-grid input{width:100%;max-width:100%;min-height:38px}
 @media(max-width:760px){.security-grid{grid-template-columns:1fr}}
+
+/* ===== KẾ HOẠCH TUẦN TRONG KHUNG CHAT / ĐA LỚP / TỔ NHÓM ===== */
+.class-switch {display:flex;flex-wrap:wrap;align-items:center;gap:12px;background:#f5f0ff;border:1px solid #d5c5ff}
+.class-switch-form {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0}
+.class-switch-form select {max-width:270px;min-height:36px;padding:7px 10px;border:1px solid #c8b8ff;border-radius:10px;background:white;color:#3b2766;font:inherit}
+.week-plan {margin:10px 14px 8px;border:1px solid #d9ccff;border-radius:16px;background:linear-gradient(140deg,#f5efff,#fefcff 58%,#f2f9ff);box-shadow:0 4px 16px rgba(98,55,180,.08);overflow:hidden;flex:0 0 auto}
+.week-plan-head {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px 10px}
+.week-plan-head strong {display:block;font-size:1.08rem;color:#3d2376;margin:3px 0}
+.week-plan-head small {display:block;color:#73658b;font-size:.78rem}
+.week-eyebrow {font-size:.68rem;font-weight:850;letter-spacing:1px;color:#8459c9}
+.week-toggle {border:1px solid #d3c5f6;border-radius:20px;background:white;padding:6px 10px;color:#6843aa;cursor:pointer;font:inherit;font-size:.78rem;white-space:nowrap}
+.week-progress {display:flex;justify-content:space-between;padding:0 16px 7px;gap:12px;font-size:.82rem;color:#55426e}
+#weekPercent {font-weight:800;color:#6943b3}
+.week-track {height:7px;margin:0 16px 12px;border-radius:12px;background:#e6dafb;overflow:hidden}
+.week-fill {height:100%;width:0;background:linear-gradient(90deg,#8e63db,#4eab9d);transition:width .4s ease;border-radius:12px}
+.week-items {max-height:205px;overflow-y:auto;padding:0 12px 6px}
+.week-day {font-size:.78rem;color:#70528a;font-weight:800;padding:11px 4px 5px;text-transform:capitalize}
+.week-item {display:flex;align-items:center;gap:9px;border:1px solid #e4daf5;border-radius:11px;width:100%;padding:10px;margin:0 0 7px;background:#fff;text-align:left;font:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.week-item:hover {background:#f7f2ff;border-color:#bba2ef}
+.week-check {font-size:1.17rem;font-weight:800;color:#9876d3;flex:0 0 22px;text-align:center}
+.week-item.is-done .week-check {color:#238a78}
+.week-item-main {flex:1;min-width:0}
+.week-item-main strong {display:block;font-size:.88rem;color:#3f3260;line-height:1.4;overflow-wrap:anywhere}
+.week-item-main small {display:block;font-size:.72rem;color:#827591;margin-top:3px;overflow-wrap:anywhere}
+.week-item.is-done .week-item-main strong {color:#716b7a}
+.week-status {font-size:.7rem;font-weight:750;line-height:1.25;padding:5px 8px;border-radius:9px;flex:0 0 auto;max-width:115px;text-align:center;background:#f1e8ff;color:#7950b2}
+.week-status.done {background:#ddf7ed;color:#207a5e}
+.week-status.started {background:#fff2d9;color:#8c6318}
+.week-status.planned {background:#e7f1ff;color:#386ba0}
+.week-status.todo {background:#fff0ef;color:#a44753}
+.week-empty {padding:14px 10px;color:#776b88;font-size:.88rem}
+.week-hint {font-size:.71rem;color:#877997;margin:4px 16px 12px;line-height:1.5}
+#weekContent[hidden],#targetGroups[hidden],#targetClasses[hidden] {display:none!important}
+.scope-choices {display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 7px}
+.scope-choices label,.scope-item {display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:#f7f1ff;border-radius:10px;cursor:pointer;margin:3px}
+.scope-choices input,.scope-item input {accent-color:#7b50c4}
+.task-scope .lbl,.f-groups .lbl {display:block;font-weight:700;font-size:.9rem;color:#634293}
+.group-tags {display:flex;gap:8px;flex-wrap:wrap}
+.group-tag,.member-class {display:inline-flex;align-items:center;gap:6px;background:#f2eaff;border:1px solid #e1d3ff;border-radius:20px;padding:4px 8px;color:#5d3d99;font-size:.8rem}
+.member-class {margin:2px 0;white-space:nowrap}
+@media(max-width:640px) {
+ .week-plan {margin:8px 8px}
+ .week-plan-head {padding:12px}
+ .week-status {max-width:84px;font-size:.63rem;padding:5px 6px}
+ .week-item-main strong {font-size:.82rem}
+ .week-items {max-height:145px;padding:0 8px 5px}
+ .class-switch {gap:8px}
+ .class-switch-form select {max-width:200px}
+}

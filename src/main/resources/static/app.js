@@ -141,6 +141,7 @@ function render(reply) {
       $('textInput').focus();
     }
     refreshTasks();
+    refreshWeekPlan();
   });
 }
 
@@ -182,6 +183,72 @@ async function refreshTasks() {
     d.onclick = () => openTask(t);
     bar.appendChild(d);
   });
+}
+
+/* ---------- kế hoạch tuần: bảng cố định ngay trong khung chat ---------- */
+const weekPlan = $('weekPlan');
+const weekToggle = $('weekToggle');
+if (weekToggle) weekToggle.onclick = () => {
+  const content = $('weekContent');
+  const collapsed = !content.hidden;
+  content.hidden = collapsed;
+  weekToggle.textContent = collapsed ? 'Mở rộng ▾' : 'Thu gọn ▴';
+  weekToggle.setAttribute('aria-expanded', String(!collapsed));
+};
+
+async function refreshWeekPlan() {
+  if (!weekPlan) return;
+  const data = await api('/student/api/week');
+  if (!data) {
+    $('weekRange').textContent = 'Chưa tải được kế hoạch tuần';
+    return;
+  }
+  $('weekRange').textContent = `${data.from} – ${data.until}`;
+  $('weekSummary').textContent = `${data.completed}/${data.total} đã hoàn thành · ${data.pending} chưa hoàn thành`;
+  const pct = data.total ? Math.round(data.completed * 100 / data.total) : 0;
+  $('weekPercent').textContent = pct + '%';
+  $('weekBar').style.width = pct + '%';
+  const parent = $('weekItems');
+  parent.replaceChildren();
+  if (!data.tasks.length) {
+    const empty = document.createElement('div');
+    empty.className = 'week-empty';
+    empty.textContent = '🌿 Tuần này chưa có nhiệm vụ được giao cho bạn ở lớp đang chọn.';
+    parent.appendChild(empty);
+    return;
+  }
+  let day = null;
+  for (const t of data.tasks) {
+    if (t.day !== day) {
+      day = t.day;
+      const heading = document.createElement('div');
+      heading.className = 'week-day';
+      heading.textContent = day;
+      parent.appendChild(heading);
+    }
+    const done = t.status === 'DONE' || t.status === 'CONFIRMED';
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'week-item ' + (done ? 'is-done' : 'is-open');
+    const check = document.createElement('span');
+    check.className = 'week-check';
+    check.textContent = done ? '✓' : '○';
+    const middle = document.createElement('span');
+    middle.className = 'week-item-main';
+    const name = document.createElement('strong');
+    name.textContent = t.label;
+    const meta = document.createElement('small');
+    meta.textContent = 'Hạn ' + t.deadline + ' · ' + t.audience;
+    middle.append(name, meta);
+    const status = document.createElement('span');
+    status.className = 'week-status ' + (done ? 'done' : t.status.toLowerCase());
+    status.textContent = t.statusLabel;
+    row.append(check, middle, status);
+    row.title = 'Xem chi tiết nhiệm vụ';
+    row.onclick = () => openTask({label:t.label, deadline:t.deadline,
+      left:t.statusLabel, images:t.images});
+    parent.appendChild(row);
+  }
 }
 
 /* ---------- bấm vào ô nhiệm vụ: xem hạn nộp và ảnh đề bài do ban cán sự gửi ---------- */
@@ -381,7 +448,10 @@ function confetti() {
 
 /* ---------- khởi động: trợ lý chủ động mở lời ---------- */
 (async () => {
+  refreshWeekPlan();
   render(await api('/student/api/state'));
+  // Cập nhật kế hoạch tuần kể cả khi giáo viên vừa giao một nhiệm vụ mới.
+  setInterval(refreshWeekPlan, 60000);
   // Cứ 10 giây hỏi máy chủ: đã đến giờ nhắc chưa?
   setInterval(async () => {
     const r = await api('/student/api/poll');

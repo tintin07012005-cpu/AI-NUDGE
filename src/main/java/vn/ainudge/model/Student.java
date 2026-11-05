@@ -2,6 +2,9 @@ package vn.ainudge.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Học sinh. Học sinh tự đăng ký bằng email hoặc được người quản trị thêm vào
@@ -41,4 +44,28 @@ public class Student {
      */
     @ManyToOne
     public ClassRoom classRoom;
+
+    /** Các lớp đã ghi danh; classRoom phía trên là lớp đang mở (giữ tương thích dữ liệu cũ). */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "student_class", joinColumns = @JoinColumn(name = "student_id"),
+            inverseJoinColumns = @JoinColumn(name = "class_room_id"))
+    public Set<ClassRoom> classMemberships = new HashSet<>();
+
+    /** Nhóm/tổ học sinh tham gia (mỗi nhóm nằm trong một lớp). */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "student_study_group", joinColumns = @JoinColumn(name = "student_id"),
+            inverseJoinColumns = @JoinColumn(name = "study_group_id"))
+    public Set<StudyGroup> studyGroups = new HashSet<>();
+
+    public Set<ClassRoom> joinedClasses() {
+        Set<ClassRoom> result = new LinkedHashSet<>();
+        if (classRoom != null) result.add(classRoom); // dữ liệu cũ vẫn hoạt động
+        if (classMemberships != null) result.addAll(classMemberships);
+        return result;
+    }
+
+    public boolean isMemberOf(Long classId) {
+        if (classId == null) return false;
+        return joinedClasses().stream().anyMatch(c -> classId.equals(c.id));
+    }
 }

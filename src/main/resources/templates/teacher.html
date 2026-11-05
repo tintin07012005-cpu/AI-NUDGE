@@ -63,13 +63,23 @@
                 <td>
                   <span th:text="${t.classes()}"></span>
                   <details th:if="${!classes.isEmpty()}">
-                    <summary class="muted small" style="cursor:pointer">Sửa lớp</summary>
+                    <summary class="muted small" style="cursor:pointer">Sửa phạm vi giao bài</summary>
                     <form th:action="@{/teacher/task/{id}/classes(id=${t.id()})}" method="post">
                       <label th:each="c : ${classes}" style="display:block;margin:2px 0"><input type="checkbox"
-                          name="classIds" th:value="${c.id}" th:checked="${t.classIds().contains(c.id)}"> <span
+                          name="classIds" th:value="${c.id}" th:checked="${t.classIds().contains(c.id) and t.groupIds().isEmpty()}"> <span
                           th:text="${c.name}"></span></label>
-                      <button class="btn sm primary" type="submit">Lưu</button> <small class="muted">Bỏ chọn hết = tất
-                        cả học sinh</small>
+                      <button class="btn sm primary" type="submit">Tiến hành giao bài</button>
+                      <small class="muted">Bỏ chọn hết = tất cả học sinh</small>
+                    </form>
+                    <form th:action="@{/teacher/task/{id}/groups(id=${t.id()})}" method="post"
+                          th:if="${!groups.isEmpty()}" style="margin-top:9px;border-top:1px solid #ddd6fe;padding-top:9px">
+                      <b class="muted small">Hoặc chỉ giao cho tổ/nhóm:</b>
+                      <label th:each="g : ${groups}" style="display:block;margin:3px 0">
+                        <input type="checkbox" name="groupIds" th:value="${g.id}"
+                               th:checked="${t.groupIds().contains(g.id)}">
+                        <span th:text="${g.classRoom.name + ' / ' + g.name}"></span>
+                      </label>
+                      <button class="btn sm primary" type="submit">Giao riêng cho nhóm</button>
                     </form>
                   </details>
                 </td>
@@ -90,7 +100,7 @@
 
     <section class="panel">
       <h2>🏫 Lớp học</h2>
-      <p class="muted small">Tạo lớp trước. Học sinh chọn lớp khi đăng ký (hoặc tự ghi danh sau khi vào web), hoặc bạn
+      <p class="muted small">Một email có thể tham gia nhiều lớp. Tạo lớp trước. Học sinh chọn lớp khi đăng ký (hoặc tự ghi danh sau khi vào web), hoặc bạn
         xếp lớp ở bảng "Học sinh" bên dưới và ở ô "Thêm danh sách lớp". Mỗi nhiệm vụ giao cho một hoặc nhiều lớp; học
         sinh lớp khác sẽ không thấy.</p>
       <form th:action="@{/teacher/class}" method="post" class="pwform" style="margin-bottom:10px">
@@ -120,6 +130,30 @@
     </section>
 
     <section class="panel">
+      <h2>👥 Tổ / nhóm trong từng lớp</h2>
+      <p class="muted small">Tạo nhóm thuộc đúng một lớp. Sau đó xếp học sinh vào nhóm ở bảng Học sinh.
+        Một nhiệm vụ giao riêng cho Tổ 1 sẽ không hiển thị với Tổ 2.</p>
+      <form th:action="@{/teacher/group}" method="post" class="pwform" style="margin-bottom:12px">
+        <select name="classId" required>
+          <option value="">— Chọn lớp —</option>
+          <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"></option>
+        </select>
+        <input name="name" placeholder="Ví dụ: Tổ 1 / Nhóm nâng cao" maxlength="80" required>
+        <button class="btn primary sm" type="submit">＋ Tạo nhóm</button>
+      </form>
+      <div class="group-tags" th:if="${!groups.isEmpty()}">
+        <div class="group-tag" th:each="g : ${groups}">
+          <span th:text="${g.classRoom.name + ' · ' + g.name}"></span>
+          <form th:action="@{/teacher/group/{id}/delete(id=${g.id})}" method="post" class="inline-form"
+            onsubmit="return confirm('Xóa tổ/nhóm này?')">
+            <button class="x" type="submit" aria-label="Xóa nhóm">×</button>
+          </form>
+        </div>
+      </div>
+      <p class="muted small" th:if="${groups.isEmpty()}">Chưa có tổ/nhóm nào.</p>
+    </section>
+
+    <section class="panel">
       <h2>Học sinh</h2>
       <form th:action="@{/teacher/passwords/fill}" method="post" class="inline-form" style="margin-bottom:8px"><button
           class="btn sm">Cấp mật khẩu cho các bạn chưa có</button></form>
@@ -136,7 +170,8 @@
             <table>
               <tr>
                 <th>Học sinh</th>
-                <th>Lớp</th>
+                <th>Lớp đã tham gia</th>
+                <th>Tổ / nhóm</th>
                 <th>Lần gần nhất</th>
                 <th>Đã bắt đầu</th>
                 <th>Báo xong</th>
@@ -155,14 +190,36 @@
                   <span class="pill mon" th:if="${r.monitor()}">BCS</span>
                 </td>
                 <td>
+                  <div th:each="c : ${classes}" th:if="${studentClassIds[r.id()].contains(c.id)}" class="member-class">
+                    <span th:text="${c.name}"></span>
+                    <form th:action="@{/teacher/student/{id}/class/remove(id=${r.id()})}" method="post" class="inline-form"
+                      onsubmit="return confirm('Bỏ học sinh khỏi lớp này?')">
+                      <input type="hidden" name="classId" th:value="${c.id}">
+                      <button type="submit" class="x" title="Bỏ khỏi lớp">×</button>
+                    </form>
+                  </div>
                   <form th:action="@{/teacher/student/{id}/class(id=${r.id()})}" method="post" class="inline-form">
-                    <select name="classId" onchange="this.form.submit()"
-                      style="padding:5px 8px;border:1.5px solid #ddd6fe;border-radius:10px;font:inherit;background:#fff">
-                      <option value="">— Chưa có lớp —</option>
-                      <option th:each="c : ${classes}" th:value="${c.id}" th:text="${c.name}"
-                        th:selected="${r.classId() != null and r.classId() == c.id}"></option>
+                    <select name="classId" onchange="if(this.value) this.form.submit()">
+                      <option value="">＋ Thêm lớp</option>
+                      <option th:each="c : ${classes}" th:if="${!studentClassIds[r.id()].contains(c.id)}"
+                              th:value="${c.id}" th:text="${c.name}"></option>
                     </select>
                   </form>
+                </td>
+                <td>
+                  <details th:if="${!groups.isEmpty()}">
+                    <summary class="muted small" style="cursor:pointer">Xếp tổ/nhóm</summary>
+                    <form th:action="@{/teacher/student/{id}/groups(id=${r.id()})}" method="post">
+                      <label th:each="sg : ${groups}" th:if="${studentClassIds[r.id()].contains(sg.classRoom.id)}"
+                             style="display:block;min-width:130px;margin:4px 0">
+                        <input type="checkbox" name="groupIds" th:value="${sg.id}"
+                               th:checked="${studentGroupIds[r.id()].contains(sg.id)}">
+                        <span th:text="${sg.classRoom.name + ' / ' + sg.name}"></span>
+                      </label>
+                      <button class="btn primary sm" type="submit">Lưu nhóm</button>
+                    </form>
+                  </details>
+                  <span class="muted small" th:if="${groups.isEmpty()}">—</span>
                 </td>
                 <td th:text="${r.lastTime()}"></td>
                 <td th:text="${r.started()}"></td>
@@ -205,7 +262,7 @@
       <h2>Thêm danh sách lớp</h2>
       <p class="muted small">Mỗi dòng một học sinh. Muốn tự đặt mật khẩu thì viết <b>Tên, mật khẩu</b> (ví dụ: <i>Nguyễn
           Văn An, abc123</i>); không ghi thì hệ thống tự cấp. Muốn học sinh nhận lời nhắc qua email thì viết thêm email:
-        <i>Nguyễn Văn An, abc123, an@gmail.com</i>. Tên đã có sẽ được bỏ qua. Học sinh đăng nhập bằng đúng tên và mật
+        <i>Nguyễn Văn An, abc123, an@gmail.com</i>. Email/tên đã có sẽ được thêm vào lớp mới, không tạo tài khoản thứ hai. Học sinh đăng nhập bằng đúng tên và mật
         khẩu ở đây.</p>
       <form th:action="@{/teacher/roster}" method="post">
         <p th:if="${!classes.isEmpty()}" style="margin:0 0 8px"><label>Xếp vào lớp:

@@ -36,26 +36,54 @@ public class Task {
     @JoinTable(name = "task_class", joinColumns = @JoinColumn(name = "task_id"), inverseJoinColumns = @JoinColumn(name = "class_room_id"))
     public Set<ClassRoom> classes = new HashSet<>();
 
+    /** Chỉ dùng khi giao riêng cho nhóm/tổ; nếu có nhóm thì không tự động giao cả lớp. */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "task_study_group", joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "study_group_id"))
+    public Set<StudyGroup> studyGroups = new HashSet<>();
+
+    /** Học sinh này có phải làm nhiệm vụ này không? (trong bất kỳ lớp em tham gia). */
+    public boolean assignedTo(Student s) {
+        if (s == null) return false;
+        if (studyGroups != null && !studyGroups.isEmpty())
+            return s.studyGroups != null && s.studyGroups.stream().anyMatch(g ->
+                    studyGroups.stream().anyMatch(target -> target.id.equals(g.id)) &&
+                    s.isMemberOf(g.classRoom.id));
+        if (classes == null || classes.isEmpty()) return true;
+        return classes.stream().anyMatch(c -> s.isMemberOf(c.id));
+    }
+
     /** Học sinh này có phải làm nhiệm vụ này không? */
     public boolean visibleTo(Student s) {
-        if (classes == null || classes.isEmpty())
-            return true;
-        if (s == null || s.classRoom == null)
-            return false;
-        for (ClassRoom c : classes)
-            if (c.id.equals(s.classRoom.id))
-                return true;
-        return false;
+        if (s == null) return false;
+        if (s.classRoom == null)
+            return (studyGroups == null || studyGroups.isEmpty()) && (classes == null || classes.isEmpty());
+        if (studyGroups != null && !studyGroups.isEmpty())
+            return studyGroups.stream().anyMatch(g -> g.classRoom.id.equals(s.classRoom.id)
+                    && s.studyGroups != null && s.studyGroups.stream().anyMatch(m -> m.id.equals(g.id)));
+        if (classes == null || classes.isEmpty()) return true;
+        return classes.stream().anyMatch(c -> c.id.equals(s.classRoom.id));
     }
 
     /** Tên các lớp được giao, để hiển thị. */
     public String classNames() {
+        if (studyGroups != null && !studyGroups.isEmpty())
+            return String.join(", ", studyGroups.stream()
+                    .map(g -> g.classRoom.name + " / " + g.name)
+                    .sorted(String.CASE_INSENSITIVE_ORDER).toList());
         if (classes == null || classes.isEmpty())
             return "Tất cả";
         return String.join(", ", classes.stream().map(c -> c.name).sorted(String.CASE_INSENSITIVE_ORDER).toList());
     }
 
+    public List<Long> groupIds() {
+        return studyGroups == null ? List.of() : studyGroups.stream().map(g -> g.id).sorted().toList();
+    }
+
     public List<Long> classIds() {
+        if (studyGroups != null && !studyGroups.isEmpty())
+            return studyGroups.stream().map(g -> g.classRoom.id).distinct()
+                    .sorted(Comparator.naturalOrder()).toList();
         return classes == null ? List.of() : classes.stream().map(c -> c.id).sorted(Comparator.naturalOrder()).toList();
     }
 }

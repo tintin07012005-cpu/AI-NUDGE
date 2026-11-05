@@ -9,4 +9,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByActiveTrueAndDeadlineAfterOrderByDeadlineAsc(LocalDateTime after);
     List<Task> findByActiveTrueOrderByDeadlineDesc();
     List<Task> findByCreatedBy_Id(Long studentId);
+    List<Task> findByActiveTrueAndDeadlineGreaterThanEqualAndDeadlineLessThanOrderByDeadlineAsc(
+            LocalDateTime from, LocalDateTime until);
 }

@@ -69,7 +69,7 @@ public class ReminderScheduler {
             if (!t.deadline.isAfter(now) || t.deadline.isAfter(now.plusMinutes(60)))
                 continue;
             for (Student s : students.findAll()) {
-                if (!t.visibleTo(s))
+                if (!t.assignedTo(s))
                     continue; // chỉ nhắc bạn nào phải làm nhiệm vụ này
                 TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
                 if (p != null && ("DONE".equals(p.status) || p.deadlinePushed))

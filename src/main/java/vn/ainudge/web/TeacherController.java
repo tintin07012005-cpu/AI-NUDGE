@@ -36,6 +36,7 @@ import vn.ainudge.repo.ClassRoomRepository;
 import vn.ainudge.repo.ConversationRepository;
 import vn.ainudge.repo.ProofImageRepository;
 import vn.ainudge.repo.StudentRepository;
+import vn.ainudge.repo.StudyGroupRepository;
 import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.repo.TaskProgressRepository;
 import vn.ainudge.repo.TaskRepository;
@@ -64,12 +65,14 @@ public class TeacherController {
     private final TaskImageRepository taskImages;
     private final vn.ainudge.service.AppCredentialService credentials;
     private final ClassRoomRepository classRooms;
+    private final StudyGroupRepository groups;
 
     public TeacherController(StudentRepository students, ConversationRepository convs, ChatLogRepository logs,
             TaskRepository tasks, TaskProgressRepository progresses, ClassDataService data,
             ProofImageRepository images, TaskImageRepository taskImages,
             vn.ainudge.service.AppCredentialService credentials,
-            ClassRoomRepository classRooms) {
+            ClassRoomRepository classRooms, StudyGroupRepository groups) {
+        this.groups = groups;
         this.classRooms = classRooms;
         this.credentials = credentials;
         this.taskImages = taskImages;
@@ -150,7 +153,7 @@ public class TeacherController {
         for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
             int st = 0, dn = 0, cf = 0;
             for (TaskProgress p : allProgress) {
-                if (!p.task.id.equals(t.id))
+                if (!p.task.id.equals(t.id) || !t.assignedTo(p.student))
                     continue;
                 if (p.startedAt != null)
                     st++;
@@ -161,9 +164,9 @@ public class TeacherController {
             }
             taskRows.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
                     t.createdBy == null ? "—" : t.createdBy.name,
-                    (int) allStudents.stream().filter(t::visibleTo).count(), st, dn, cf,
+                    (int) allStudents.stream().filter(t::assignedTo).count(), st, dn, cf,
                     taskImages.findByTask_IdOrderByIdAsc(t.id).stream().map(i -> i.id).toList(),
-                    t.classNames(), t.classIds()));
+                    t.classNames(), t.classIds(), t.groupIds()));
         }
 
         // ----- bảng học sinh -----
@@ -177,7 +180,7 @@ public class TeacherController {
                 todayCount++;
             int started = 0, done = 0, confirmed = 0, early = 0, onTime = 0, late = 0, missing = 0;
             for (Task t : activeTasks) {
-                if (!t.visibleTo(s))
+                if (!t.assignedTo(s))
                     continue; // nhiệm vụ của lớp khác thì không tính cho em này
                 TaskProgress p = allProgress.stream()
                         .filter(x -> x.task.id.equals(t.id) && x.student.id.equals(s.id)).findFirst().orElse(null);
@@ -275,7 +278,7 @@ public class TeacherController {
         List<ClassRow> classRows = new ArrayList<>();
         for (ClassRoom c : classList)
             classRows.add(new ClassRow(c.id, c.name,
-                    allStudents.stream().filter(x -> x.classRoom != null && x.classRoom.id.equals(c.id)).count()));
+                    allStudents.stream().filter(x -> x.isMemberOf(c.id)).count()));
 
         // ----- nhóm nhiệm vụ và học sinh theo lớp -----
         List<TaskGroup> taskGroups = new ArrayList<>();
@@ -287,12 +290,22 @@ public class TeacherController {
 
         List<StudentGroup> studentGroups = new ArrayList<>();
         for (ClassRoom c : classList)
-            studentGroups.add(new StudentGroup(c.name, rows.stream().filter(r -> c.id.equals(r.classId())).toList()));
+            studentGroups.add(new StudentGroup(c.name, rows.stream()
+                    .filter(r -> allStudents.stream().anyMatch(s -> s.id.equals(r.id()) && s.isMemberOf(c.id))).toList()));
         List<StudentRow> noClass = rows.stream().filter(r -> r.classId() == null).toList();
         if (!noClass.isEmpty())
             studentGroups.add(new StudentGroup("Chưa có lớp", noClass));
 
         model.addAttribute("classes", classList);
+        model.addAttribute("groups", groups.findAll());
+        Map<Long, List<Long>> studentClassIds = new HashMap<>();
+        Map<Long, List<Long>> studentGroupIds = new HashMap<>();
+        for (Student s : allStudents) {
+            studentClassIds.put(s.id, s.joinedClasses().stream().map(c -> c.id).toList());
+            studentGroupIds.put(s.id, s.studyGroups.stream().map(g -> g.id).toList());
+        }
+        model.addAttribute("studentClassIds", studentClassIds);
+        model.addAttribute("studentGroupIds", studentGroupIds);
         model.addAttribute("classRows", classRows);
         model.addAttribute("tasks", taskRows);
         model.addAttribute("taskGroups", taskGroups);
@@ -316,7 +329,7 @@ public class TeacherController {
 
         List<ProgressView> pv = new ArrayList<>();
         for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
-            if (!t.visibleTo(s))
+            if (!t.assignedTo(s))
                 continue;
             TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
             String plan = p == null || p.plannedLabel == null ? "—"
@@ -367,6 +380,37 @@ public class TeacherController {
         return "redirect:/teacher";
     }
 
+    /** Bỏ lớp của riêng một học sinh, không xóa tài khoản. */
+    @PostMapping("/student/{id}/class/remove")
+    public String removeStudentClass(@PathVariable Long id, @RequestParam Long classId, RedirectAttributes ra) {
+        data.removeStudentClass(id, classId);
+        ra.addFlashAttribute("msg", "Đã bỏ học sinh khỏi lớp đã chọn.");
+        return "redirect:/teacher";
+    }
+
+    /** Tạo tổ/nhóm thuộc một lớp. */
+    @PostMapping("/group")
+    public String createGroup(@RequestParam Long classId, @RequestParam String name, RedirectAttributes ra) {
+        String err = data.createGroup(classId, name);
+        ra.addFlashAttribute("msg", err == null ? "Đã tạo tổ/nhóm." : err);
+        return "redirect:/teacher";
+    }
+
+    @PostMapping("/group/{id}/delete")
+    public String deleteGroup(@PathVariable Long id, RedirectAttributes ra) {
+        String err = data.deleteGroup(id);
+        ra.addFlashAttribute("msg", err == null ? "Đã xóa tổ/nhóm." : err);
+        return "redirect:/teacher";
+    }
+
+    @PostMapping("/student/{id}/groups")
+    public String setStudentGroups(@PathVariable Long id,
+            @RequestParam(value = "groupIds", required = false) List<Long> groupIds, RedirectAttributes ra) {
+        String err = data.setStudentGroups(id, groupIds);
+        ra.addFlashAttribute("msg", err == null ? "Đã lưu tổ/nhóm của học sinh." : err);
+        return "redirect:/teacher";
+    }
+
     /** Tạo lớp mới. */
     @PostMapping("/class")
     public String createClass(@RequestParam String name, RedirectAttributes ra) {
@@ -401,6 +445,14 @@ public class TeacherController {
             @RequestParam(value = "classIds", required = false) List<Long> classIds, RedirectAttributes ra) {
         data.setTaskClasses(id, classIds);
         ra.addFlashAttribute("msg", "Đã cập nhật lớp được giao của nhiệm vụ");
+        return "redirect:/teacher";
+    }
+
+    @PostMapping("/task/{id}/groups")
+    public String setTaskGroups(@PathVariable Long id,
+            @RequestParam(value = "groupIds", required = false) List<Long> groupIds, RedirectAttributes ra) {
+        String err = data.setTaskGroups(id, groupIds);
+        ra.addFlashAttribute("msg", err == null ? "Đã giao nhiệm vụ riêng cho tổ/nhóm." : err);
         return "redirect:/teacher";
     }
 
@@ -486,7 +538,7 @@ public class TeacherController {
         all.sort(Comparator.comparing((Student x) -> x.name, String.CASE_INSENSITIVE_ORDER));
         for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
             for (Student s : all) {
-                if (!t.visibleTo(s))
+                if (!t.assignedTo(s))
                     continue;
                 TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
                 rows.add(row(s.name, Script.label(t), t.deadline.format(DT), Eval.statusLabel(p),

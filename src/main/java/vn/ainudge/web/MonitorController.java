@@ -28,6 +28,7 @@ import vn.ainudge.model.TaskProgress;
 import vn.ainudge.repo.ClassRoomRepository;
 import vn.ainudge.repo.ProofImageRepository;
 import vn.ainudge.repo.StudentRepository;
+import vn.ainudge.repo.StudyGroupRepository;
 import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.repo.TaskProgressRepository;
 import vn.ainudge.repo.TaskRepository;
@@ -55,11 +56,13 @@ public class MonitorController {
     private final ProofService proof;
     private final RememberService remember;
     private final ClassRoomRepository classRooms;
+    private final StudyGroupRepository groups;
 
     public MonitorController(StudentRepository students, TaskRepository tasks, TaskProgressRepository progresses,
             ProofImageRepository images, TaskImageRepository taskImages, ProofService proof,
             RememberService remember, vn.ainudge.service.AppCredentialService credentials,
-            ClassRoomRepository classRooms) {
+            ClassRoomRepository classRooms, StudyGroupRepository groups) {
+        this.groups = groups;
         this.classRooms = classRooms;
         this.credentials = credentials;
         this.students = students;
@@ -118,9 +121,10 @@ public class MonitorController {
                 continue; // chỉ hiện nhiệm vụ gần đây
             if (!t.visibleTo(m) && !(t.createdBy != null && t.createdBy.id.equals(m.id)))
                 continue; // chỉ thấy nhiệm vụ của lớp mình (hoặc do mình nhập)
-            int total = (int) allStudents.stream().filter(t::visibleTo).count();
+            int total = (int) allStudents.stream().filter(t::assignedTo).count();
             int done = 0, conf = 0;
             for (TaskProgress p : progresses.findByTask_Id(t.id)) {
+                if (!t.assignedTo(p.student)) continue;
                 if ("DONE".equals(p.status))
                     done++;
                 if (p.confirmed)
@@ -128,10 +132,12 @@ public class MonitorController {
             }
             rows.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
                     t.createdBy == null ? "—" : t.createdBy.name, total, 0, done, conf, imageIds(t.id),
-                    t.classNames(), t.classIds()));
+                    t.classNames(), t.classIds(), t.groupIds()));
         }
         model.addAttribute("name", m.name);
         model.addAttribute("classes", classRooms.findAllByOrderByNameAsc());
+        model.addAttribute("groups", m.classRoom == null ? List.of()
+                : groups.findByClassRoom_IdOrderByNameAsc(m.classRoom.id));
         model.addAttribute("myClassId", m.classRoom == null ? null : m.classRoom.id);
         model.addAttribute("rows", rows);
         model.addAttribute("defaultDeadline", LocalDate.now().atTime(21, 0).toString());
@@ -144,6 +150,8 @@ public class MonitorController {
     public String create(@RequestParam String subject, @RequestParam String title,
             @RequestParam String deadline,
             @RequestParam(value = "classIds", required = false) List<Long> classIds,
+            @RequestParam(defaultValue = "class") String scope,
+            @RequestParam(value = "groupIds", required = false) List<Long> groupIds,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,
             HttpSession session, RedirectAttributes ra) {
         Student m = monitor(session);
@@ -162,8 +170,33 @@ public class MonitorController {
             t.createdAt = LocalDateTime.now();
             t.createdBy = m;
             t.active = true;
-            if (classIds != null && !classIds.isEmpty())
-                t.classes.addAll(classRooms.findAllById(classIds)); // rỗng = tất cả học sinh
+            if ("group".equals(scope)) {
+                if (groupIds == null || groupIds.isEmpty()) {
+                    ra.addFlashAttribute("msg", "Bạn chưa chọn tổ/nhóm nhận nhiệm vụ.");
+                    return "redirect:/monitor";
+                }
+                var chosen = groups.findAllById(groupIds);
+                if (chosen.size() != new java.util.HashSet<>(groupIds).size()
+                        || m.classRoom == null
+                        || chosen.stream().anyMatch(g -> !g.classRoom.id.equals(m.classRoom.id))) {
+                    ra.addFlashAttribute("msg", "Bạn chỉ được giao nhiệm vụ cho tổ/nhóm của lớp đang mở.");
+                    return "redirect:/monitor";
+                }
+                t.studyGroups.addAll(chosen);
+            } else if ("class".equals(scope)) {
+                if (classIds == null || classIds.isEmpty()) {
+                    ra.addFlashAttribute("msg", "Bạn cần chọn ít nhất một lớp; nếu giao tất cả, hãy chọn 'Tất cả lớp'.");
+                    return "redirect:/monitor";
+                }
+                t.classes.addAll(classRooms.findAllById(classIds));
+                if (t.classes.size() != new java.util.HashSet<>(classIds).size()) {
+                    ra.addFlashAttribute("msg", "Lớp được chọn không hợp lệ.");
+                    return "redirect:/monitor";
+                }
+            } else if (!"all".equals(scope)) {
+                ra.addFlashAttribute("msg", "Phạm vi giao nhiệm vụ không hợp lệ.");
+                return "redirect:/monitor";
+            }
             tasks.save(t);
             // ảnh đề bài (có thể nhiều ảnh) để học sinh biết đó là bài nào
             ProofService.Result r = proof.saveTaskImages(t, files);
@@ -216,12 +249,14 @@ public class MonitorController {
     /** Danh sách cả lớp cho một nhiệm vụ để xác nhận ai đã nộp. */
     @GetMapping("/task/{id}")
     public String roster(@PathVariable Long id, HttpSession session, Model model) {
-        if (monitor(session) == null)
-            return "redirect:/monitor";
+        Student currentMonitor = monitor(session);
+        if (currentMonitor == null) return "redirect:/monitor";
         Task t = tasks.findById(id).orElseThrow();
+        if (!t.assignedTo(currentMonitor) && (t.createdBy == null || !t.createdBy.id.equals(currentMonitor.id)))
+            return "redirect:/monitor";
         List<MemberRow> rows = new ArrayList<>();
         for (Student s : students.findAll()) {
-            if (!t.visibleTo(s))
+            if (!t.assignedTo(s))
                 continue; // chỉ liệt kê các bạn phải làm nhiệm vụ này
             TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
             rows.add(new MemberRow(s.id, s.name, Eval.statusLabel(p),
@@ -250,6 +285,9 @@ public class MonitorController {
             return "redirect:/monitor";
         Task t = tasks.findById(id).orElseThrow();
         Student s = students.findById(studentId).orElseThrow();
+        if (!t.assignedTo(s)) return "redirect:/monitor/task/" + id;
+        if (!t.assignedTo(m) && (t.createdBy == null || !t.createdBy.id.equals(m.id)))
+            return "redirect:/monitor";
         TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElseGet(() -> {
             TaskProgress x = new TaskProgress();
             x.task = t;

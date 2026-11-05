@@ -1,6 +1,11 @@
 package vn.ainudge.web;
 
 import jakarta.servlet.http.HttpSession;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,11 +18,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import vn.ainudge.dto.Reply;
+import vn.ainudge.dto.WeekPlan;
+import vn.ainudge.dto.WeekTask;
 import vn.ainudge.dto.TaskChip;
 import vn.ainudge.model.ClassRoom;
 import vn.ainudge.model.Student;
+import vn.ainudge.model.Task;
+import vn.ainudge.model.TaskProgress;
 import vn.ainudge.repo.ClassRoomRepository;
 import vn.ainudge.repo.StudentRepository;
+import vn.ainudge.repo.TaskRepository;
+import vn.ainudge.repo.TaskProgressRepository;
+import vn.ainudge.repo.TaskImageRepository;
 import vn.ainudge.service.ChatService;
 import vn.ainudge.service.NotifyService;
 import vn.ainudge.service.PresenceTracker;
@@ -30,6 +42,12 @@ public class StudentController {
     private final NotifyService notify;
     private final PresenceTracker presence;
     private final ClassRoomRepository classRooms;
+    private final TaskRepository tasks;
+    private final TaskProgressRepository progresses;
+    private final TaskImageRepository taskImages;
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE dd/MM", new java.util.Locale("vi", "VN"));
+    private static final DateTimeFormatter DM = DateTimeFormatter.ofPattern("HH:mm dd/MM");
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**
      * Mỗi học sinh một khóa: trình duyệt vừa hỏi định kỳ (poll) vừa gửi câu trả lời
@@ -46,7 +64,11 @@ public class StudentController {
     }
 
     public StudentController(StudentRepository students, ChatService chat, NotifyService notify,
-            PresenceTracker presence, ClassRoomRepository classRooms) {
+            PresenceTracker presence, ClassRoomRepository classRooms,
+            TaskRepository tasks, TaskProgressRepository progresses, TaskImageRepository taskImages) {
+        this.tasks = tasks;
+        this.progresses = progresses;
+        this.taskImages = taskImages;
         this.classRooms = classRooms;
         this.students = students;
         this.chat = chat;
@@ -66,25 +88,78 @@ public class StudentController {
         model.addAttribute("hasEmail", s.email != null && !s.email.isBlank());
         List<ClassRoom> classList = classRooms.findAllByOrderByNameAsc();
         model.addAttribute("className", s.classRoom == null ? null : s.classRoom.name);
+        model.addAttribute("activeClassId", s.classRoom == null ? null : s.classRoom.id);
+        model.addAttribute("joinedClasses", s.joinedClasses().stream()
+                .sorted(Comparator.comparing(c -> c.name, String.CASE_INSENSITIVE_ORDER)).toList());
+        model.addAttribute("availableClasses", classList.stream()
+                .filter(c -> !s.isMemberOf(c.id)).toList());
         model.addAttribute("classes", classList);
-        model.addAttribute("needClass", s.classRoom == null && !classList.isEmpty()); // chưa vào lớp nào: hiện ô chọn
-                                                                                      // lớp
+        model.addAttribute("needClass", s.classRoom == null && !classList.isEmpty());
         return "student";
     }
 
-    /**
-     * Học sinh tự ghi danh vào lớp (chỉ khi chưa có lớp; muốn đổi lớp thì nhờ người
-     * quản trị).
-     */
+    /** Đăng ký thêm lớp bằng tài khoản hiện có; không tạo tài khoản/email khác. */
     @PostMapping("/class")
     public String joinClass(@RequestParam Long classId, HttpSession session) {
         Student s = current(session);
-        if (s.classRoom == null)
+        synchronized (lockOf(s)) {
             classRooms.findById(classId).ifPresent(c -> {
+                if (s.classRoom != null) s.classMemberships.add(s.classRoom); // tự chuyển dữ liệu cũ
+                s.classMemberships.add(c);
                 s.classRoom = c;
                 students.save(s);
+                chat.open(s, true); // khởi tạo cuộc trò chuyện cho lớp vừa chọn
             });
+        }
         return "redirect:/student";
+    }
+
+    /** Chuyển lớp đang xem (chỉ lớp đã tham gia). */
+    @PostMapping("/class/select")
+    public String selectClass(@RequestParam Long classId, HttpSession session) {
+        Student s = current(session);
+        synchronized (lockOf(s)) {
+            if (s.isMemberOf(classId)) {
+                classRooms.findById(classId).ifPresent(c -> {
+                    if (s.classRoom != null) s.classMemberships.add(s.classRoom);
+                    s.classRoom = c;
+                    students.save(s);
+                    chat.open(s, true);
+                });
+            }
+        }
+        return "redirect:/student";
+    }
+
+    /** Kế hoạch tuần có trạng thái thật của RIÊNG học sinh, theo lớp đang mở. */
+    @GetMapping("/api/week")
+    @ResponseBody
+    public WeekPlan week(HttpSession session) {
+        Student s = current(session);
+        LocalDate monday = LocalDate.now().with(DayOfWeek.MONDAY);
+        LocalDate sunday = monday.plusDays(6);
+        List<WeekTask> rows = new java.util.ArrayList<>();
+        int completed = 0;
+        for (Task t : tasks.findByActiveTrueAndDeadlineGreaterThanEqualAndDeadlineLessThanOrderByDeadlineAsc(
+                monday.atStartOfDay(), monday.plusDays(7).atStartOfDay())) {
+            if (!t.visibleTo(s)) continue;
+            TaskProgress progress = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
+            String status = progress == null ? "TODO" : progress.confirmed ? "CONFIRMED" : progress.status;
+            if (status == null) status = "TODO";
+            if ("DONE".equals(status) || "CONFIRMED".equals(status)) completed++;
+            String label = switch (status) {
+                case "CONFIRMED" -> "Đã nộp · được xác nhận";
+                case "DONE" -> "Đã hoàn thành";
+                case "STARTED" -> "Đang làm";
+                case "PLANNED" -> "Đã lên lịch";
+                default -> "Chưa hoàn thành";
+            };
+            rows.add(new WeekTask(t.id, t.subject + " · " + t.title,
+                    t.deadline.format(DAY), t.deadline.format(DM), status, label,
+                    t.classNames(), taskImages.findByTask_IdOrderByIdAsc(t.id).stream().map(i -> i.id).toList()));
+        }
+        return new WeekPlan(monday.format(DATE), sunday.format(DATE),
+                rows.size(), completed, rows.size() - completed, rows);
     }
 
     /** Trình duyệt gọi khi mở trang: lấy lịch sử + lời chào của trợ lý. */
