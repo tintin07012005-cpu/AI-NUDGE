@@ -34,7 +34,7 @@
         <td th:text="${p.selfSubmitted()}"></td>
         <td>
           <a th:each="iid : ${p.images()}" th:href="@{/proof/{id}/file(id=${iid})}" target="_blank">
-            <img class="thumb" th:src="@{/proof/{id}/file(id=${iid})}" alt="Ảnh minh chứng"></a>
+            <img loading="lazy" decoding="async" class="thumb" th:src="@{/proof/{id}/file(id=${iid})}" alt="Ảnh minh chứng"></a>
           <span class="muted small" th:if="${p.images().isEmpty()}">—</span>
         </td>
         <td th:text="${p.confirmed()}"></td>

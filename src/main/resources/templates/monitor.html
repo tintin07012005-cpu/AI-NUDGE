@@ -92,9 +92,11 @@
       </form>
     </section>
 
-    <section class="panel" th:if="${!groups.isEmpty()}">
+    <section class="panel">
       <h2>⭐ Tổ trưởng</h2>
-      <p class="muted small">Chọn tổ trưởng cho từng tổ trong lớp của bạn. Tổ trưởng phải là thành viên của tổ đó.</p>
+      <p class="muted small" th:if="${groups.isEmpty()}">Lớp của bạn chưa có tổ/nhóm nào nên chưa phân tổ trưởng được.
+        Nhờ giáo viên tạo tổ ở trang Quản trị và xếp các bạn vào tổ, khung này sẽ hiện danh sách tổ để bạn chọn tổ trưởng.</p>
+      <p class="muted small" th:unless="${groups.isEmpty()}">Chọn tổ trưởng cho từng tổ trong lớp của bạn. Tổ trưởng phải là thành viên của tổ đó.</p>
       <div class="group-row" th:each="g : ${groups}">
         <b th:text="${g.name}"></b>
         <form th:action="@{/monitor/group/{id}/leader(id=${g.id})}" method="post" class="leader-form">
@@ -128,7 +130,7 @@
             <td th:text="${r.classes()}"></td>
             <td>
               <span class="imgitem" th:each="iid : ${r.images()}">
-                <a th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank"><img class="thumb"
+                <a th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank"><img loading="lazy" decoding="async" class="thumb"
                     th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
                 <form th:action="@{/monitor/task-image/{id}/delete(id=${iid})}" method="post" class="inline-form"
                   onsubmit="return confirm('Xóa tệp này?')"><button class="x" title="Xóa ảnh">×</button></form>

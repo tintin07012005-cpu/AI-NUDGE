@@ -55,7 +55,7 @@
                 <td th:text="${t.label()}"></td>
                 <td>
                   <a th:each="iid : ${t.images()}" th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank">
-                    <img class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
+                    <img loading="lazy" decoding="async" class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
                   <span class="muted" th:if="${t.images().isEmpty()}">—</span>
                 </td>
                 <td th:text="${t.deadline()}"></td>

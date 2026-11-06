@@ -149,12 +149,32 @@ public class TeacherController {
         List<Conversation> allConvs = convs.findAll();
         List<TaskProgress> allProgress = progresses.findAll();
 
+        // Chỉ mục để tra nhanh, thay cho việc duyệt lồng nhau (trang quản trị chậm khi nhiều học sinh/nhiệm vụ)
+        Map<Long, List<TaskProgress>> progressByTask = new HashMap<>();
+        Map<String, TaskProgress> progressByKey = new HashMap<>();
+        for (TaskProgress p : allProgress) {
+            progressByTask.computeIfAbsent(p.task.id, k -> new ArrayList<>()).add(p);
+            progressByKey.putIfAbsent(p.task.id + ":" + p.student.id, p);
+        }
+        Map<Long, List<Conversation>> convsByStudent = new HashMap<>();
+        for (Conversation cv : allConvs)
+            convsByStudent.computeIfAbsent(cv.student.id, k -> new ArrayList<>()).add(cv);
+        convsByStudent.values().forEach(
+                list -> list.sort(Comparator.comparing((Conversation cv) -> cv.startedAt).reversed()));
+        Map<Long, List<Long>> imageIdsByTask = new HashMap<>(); // một lần truy vấn thay cho mỗi nhiệm vụ một lần
+        for (vn.ainudge.model.TaskImage ti : taskImages.findAll().stream()
+                .sorted(Comparator.comparing((vn.ainudge.model.TaskImage x) -> x.id)).toList())
+            imageIdsByTask.computeIfAbsent(ti.task.id, k -> new ArrayList<>()).add(ti.id);
+        Map<Long, Student> studentById = new HashMap<>();
+        for (Student sd : allStudents)
+            studentById.put(sd.id, sd);
+
         // ----- bảng nhiệm vụ -----
         List<TaskRow> taskRows = new ArrayList<>();
         for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
             int st = 0, dn = 0, cf = 0;
-            for (TaskProgress p : allProgress) {
-                if (!p.task.id.equals(t.id) || !t.assignedTo(p.student))
+            for (TaskProgress p : progressByTask.getOrDefault(t.id, List.of())) {
+                if (!t.assignedTo(p.student))
                     continue;
                 if (p.startedAt != null)
                     st++;
@@ -166,7 +186,7 @@ public class TeacherController {
             taskRows.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
                     t.createdBy == null ? "—" : t.createdBy.name,
                     (int) allStudents.stream().filter(t::assignedTo).count(), st, dn, cf,
-                    taskImages.findByTask_IdOrderByIdAsc(t.id).stream().map(i -> i.id).toList(),
+                    imageIdsByTask.getOrDefault(t.id, List.of()),
                     t.classNames(), t.classIds(), t.groupIds()));
         }
 
@@ -175,16 +195,14 @@ public class TeacherController {
         int todayCount = 0;
         List<Task> activeTasks = tasks.findByActiveTrueOrderByDeadlineDesc();
         for (Student s : allStudents) {
-            List<Conversation> mine = allConvs.stream().filter(c -> c.student.id.equals(s.id))
-                    .sorted(Comparator.comparing((Conversation c) -> c.startedAt).reversed()).toList();
+            List<Conversation> mine = convsByStudent.getOrDefault(s.id, List.of());
             if (!mine.isEmpty() && mine.get(0).startedAt.toLocalDate().equals(LocalDate.now()))
                 todayCount++;
             int started = 0, done = 0, confirmed = 0, early = 0, onTime = 0, late = 0, missing = 0;
             for (Task t : activeTasks) {
                 if (!t.assignedTo(s))
                     continue; // nhiệm vụ của lớp khác thì không tính cho em này
-                TaskProgress p = allProgress.stream()
-                        .filter(x -> x.task.id.equals(t.id) && x.student.id.equals(s.id)).findFirst().orElse(null);
+                TaskProgress p = progressByKey.get(t.id + ":" + s.id);
                 if (p != null) {
                     if (p.startedAt != null)
                         started++;
@@ -292,7 +310,7 @@ public class TeacherController {
         List<StudentGroup> studentGroups = new ArrayList<>();
         for (ClassRoom c : classList)
             studentGroups.add(new StudentGroup(c.name, rows.stream()
-                    .filter(r -> allStudents.stream().anyMatch(s -> s.id.equals(r.id()) && s.isMemberOf(c.id))).toList()));
+                    .filter(r -> studentById.get(r.id()).isMemberOf(c.id)).toList()));
         List<StudentRow> noClass = rows.stream().filter(r -> r.classId() == null).toList();
         if (!noClass.isEmpty())
             studentGroups.add(new StudentGroup("Chưa có lớp", noClass));
