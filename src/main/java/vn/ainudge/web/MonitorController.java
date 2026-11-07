@@ -123,14 +123,28 @@ public class MonitorController {
             return "monitor-pin";
         List<Student> allStudents = students.findAll();
         List<TaskRow> rows = new ArrayList<>();
+        List<Task> shown = new ArrayList<>();
         for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
             if (t.deadline.isBefore(LocalDate.now().minusDays(1).atStartOfDay()))
                 continue; // chỉ hiện nhiệm vụ gần đây
             if (!t.visibleTo(m) && !(t.createdBy != null && t.createdBy.id.equals(m.id)))
                 continue; // chỉ thấy nhiệm vụ của lớp mình (hoặc do mình nhập)
+            shown.add(t);
+        }
+        // Lấy tiến độ và ảnh của mọi nhiệm vụ chỉ bằng 2 truy vấn (trước đây mỗi nhiệm vụ 2 truy vấn riêng)
+        List<Long> shownIds = shown.stream().map(x -> x.id).toList();
+        Map<Long, List<TaskProgress>> progByTask = new HashMap<>();
+        Map<Long, List<Long>> imgByTask = new HashMap<>();
+        if (!shownIds.isEmpty()) {
+            for (TaskProgress pp : progresses.findByTask_IdIn(shownIds))
+                progByTask.computeIfAbsent(pp.task.id, k -> new ArrayList<>()).add(pp);
+            for (Object[] pr : taskImages.findIdPairsByTaskIds(shownIds))
+                imgByTask.computeIfAbsent((Long) pr[0], k -> new ArrayList<>()).add((Long) pr[1]);
+        }
+        for (Task t : shown) {
             int total = (int) allStudents.stream().filter(t::assignedTo).count();
             int done = 0, conf = 0;
-            for (TaskProgress p : progresses.findByTask_Id(t.id)) {
+            for (TaskProgress p : progByTask.getOrDefault(t.id, List.of())) {
                 if (!t.assignedTo(p.student)) continue;
                 if ("DONE".equals(p.status))
                     done++;
@@ -138,7 +152,8 @@ public class MonitorController {
                     conf++;
             }
             rows.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
-                    t.createdBy == null ? "—" : t.createdBy.name, total, 0, done, conf, imageIds(t.id),
+                    t.createdBy == null ? "—" : t.createdBy.name, total, 0, done, conf,
+                    imgByTask.getOrDefault(t.id, List.of()),
                     t.classNames(), t.classIds(), t.groupIds()));
         }
         model.addAttribute("name", m.name);

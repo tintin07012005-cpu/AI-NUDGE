@@ -1,5 +1,6 @@
 package vn.ainudge.web;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,7 +78,7 @@ public class ProofController {
      * xem được.
      */
     @GetMapping("/task-image/{id}/file")
-    public ResponseEntity<Resource> taskFile(@PathVariable Long id, HttpSession session) {
+    public ResponseEntity<Resource> taskFile(@PathVariable Long id, HttpSession session, HttpServletRequest req) {
         TaskImage im = taskImages.findById(id).orElse(null);
         if (im == null)
             return ResponseEntity.notFound().build();
@@ -88,13 +89,46 @@ public class ProofController {
         if (!ok)
             return ResponseEntity.status(403).build();
 
+        // Trang chỉ hỏi loại tệp (HEAD) để biết là ảnh hay Word: trả ngay, không tải tệp về
+        if ("HEAD".equals(req.getMethod()))
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(im.contentType))
+                    .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePrivate())
+                    .build();
+
         byte[] data = proof.bytes(im.fileName, im.cloudUrl);
         if (data == null)
             return ResponseEntity.notFound().build();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(im.contentType))
-                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePrivate()) // ảnh đề không bao giờ đổi nội dung
                 .header("X-Content-Type-Options", "nosniff")
                 .body(new ByteArrayResource(data));
+    }
+
+    /**
+     * Ảnh thu nhỏ của ảnh đề bài: chuyển thẳng sang Cloudinary (đã thu nhỏ, đổi định dạng nhẹ)
+     * nên không phải tải ảnh gốc qua máy chủ Render. Tệp Word hoặc tệp cũ thì dùng đường dẫn tệp gốc.
+     */
+    @GetMapping("/task-image/{id}/thumb")
+    public ResponseEntity<Void> taskThumb(@PathVariable Long id, HttpSession session) {
+        TaskImage im = taskImages.findById(id).orElse(null);
+        if (im == null)
+            return ResponseEntity.notFound().build();
+
+        boolean ok = session.getAttribute("teacher") != null;
+        if (!ok && session.getAttribute("studentId") != null)
+            ok = students.existsById((Long) session.getAttribute("studentId"));
+        if (!ok)
+            return ResponseEntity.status(403).build();
+
+        String target = "/task-image/" + id + "/file";
+        if (im.cloudUrl != null && im.contentType != null && im.contentType.startsWith("image/")
+                && im.cloudUrl.contains("/image/upload/"))
+            target = im.cloudUrl.replace("/image/upload/", "/image/upload/c_limit,w_360,q_auto,f_auto/");
+        return ResponseEntity.status(302)
+                .header("Location", target)
+                .header("Cache-Control", "private, max-age=86400")
+                .build();
     }
 }

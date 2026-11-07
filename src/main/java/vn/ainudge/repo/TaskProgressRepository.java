@@ -12,5 +12,7 @@ public interface TaskProgressRepository extends JpaRepository<TaskProgress, Long
     List<TaskProgress> findByStudent_Id(Long studentId);
     List<TaskProgress> findByStudent_IdAndTask_IdIn(Long studentId, Collection<Long> taskIds);
     List<TaskProgress> findByTask_Id(Long taskId);
+    /** Một lần truy vấn lấy tiến độ của nhiều nhiệm vụ. */
+    List<TaskProgress> findByTask_IdIn(Collection<Long> taskIds);
     List<TaskProgress> findByStatusAndPlannedAtLessThanEqual(String status, LocalDateTime time);
 }

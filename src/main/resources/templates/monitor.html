@@ -130,8 +130,8 @@
             <td th:text="${r.classes()}"></td>
             <td>
               <span class="imgitem" th:each="iid : ${r.images()}">
-                <a th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank"><img loading="lazy" decoding="async" class="thumb"
-                    th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>
+                <a th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank"><img loading="lazy" decoding="async" class="thumb" th:src="@{/task-image/{id}/thumb(id=${iid})}"
+                      th:attr="data-full=@{/task-image/{id}/file(id=${iid})}" onerror="this.onerror=null;this.src=this.dataset.full" alt="Ảnh đề bài"></a>
                 <form th:action="@{/monitor/task-image/{id}/delete(id=${iid})}" method="post" class="inline-form"
                   onsubmit="return confirm('Xóa tệp này?')"><button class="x" title="Xóa ảnh">×</button></form>
               </span>
