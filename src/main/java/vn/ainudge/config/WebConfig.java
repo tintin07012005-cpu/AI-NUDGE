@@ -3,6 +3,7 @@ package vn.ainudge.config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.context.annotation.Configuration;
 import vn.ainudge.repo.StudentRepository;
 import vn.ainudge.service.RememberService;
@@ -15,6 +16,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
     private final StudentRepository students;
     private final RememberService remember;
+    /** Nhớ 30 giây là học sinh còn tồn tại, để mỗi lần trang gọi máy chủ không phải hỏi database. */
+    private final ConcurrentHashMap<Long, Long> okUntil = new ConcurrentHashMap<>();
 
     public WebConfig(StudentRepository students, RememberService remember) {
         this.students = students;
@@ -34,8 +37,13 @@ public class WebConfig implements WebMvcConfigurer {
                 }
                 if (path.startsWith("/student") || path.startsWith("/monitor")) {
                     Object sid = s == null ? null : s.getAttribute("studentId");
+                    Long sidL = (sid instanceof Long l) ? l : null;
+                    long now = System.currentTimeMillis();
                     // chưa đăng nhập, hoặc học sinh đã bị người quản trị xóa khỏi danh sách
-                    if (sid == null || !students.existsById((Long) sid)) {
+                    boolean ok = sidL != null && (now < okUntil.getOrDefault(sidL, 0L) || students.existsById(sidL));
+                    if (ok) okUntil.put(sidL, now + 30_000);
+                    if (!ok) {
+                        if (sidL != null) okUntil.remove(sidL);
                         if (s != null) s.invalidate();
                         remember.forgetStudent(res);
                         if (path.contains("/api/")) res.sendError(401);
