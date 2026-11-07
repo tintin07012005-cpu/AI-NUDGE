@@ -453,7 +453,10 @@ function confetti() {
   // Cập nhật kế hoạch tuần kể cả khi giáo viên vừa giao một nhiệm vụ mới.
   setInterval(refreshWeekPlan, 60000);
   // Cứ 10 giây hỏi máy chủ: đã đến giờ nhắc chưa?
+  let pollTick = 0;
   setInterval(async () => {
+    // Tab đang ẩn thì hỏi thưa hơn (30 giây/lần): giảm tải cho máy chủ; lời nhắc vẫn đến qua thông báo đẩy
+    if (document.hidden && ++pollTick % 3 !== 0) return;
     const r = await api('/student/api/poll');
     if (r && r.messages && r.messages.length) { showAlarm(r); render(r); }
   }, 10000);

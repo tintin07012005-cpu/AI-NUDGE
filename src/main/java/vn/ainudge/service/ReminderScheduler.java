@@ -2,6 +2,7 @@ package vn.ainudge.service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,11 +65,15 @@ public class ReminderScheduler {
                         open);
         }
 
-        // (2) sắp đến hạn nộp (trong 60 phút) mà chưa xong
-        for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
-            if (!t.deadline.isAfter(now) || t.deadline.isAfter(now.plusMinutes(60)))
-                continue;
-            for (Student s : students.findAll()) {
+        // (2) sắp đến hạn nộp (trong 60 phút) mà chưa xong.
+        // Chỉ lấy các nhiệm vụ sắp đến hạn (không tải mọi nhiệm vụ từ trước tới nay) và chỉ tải danh sách học sinh một lần.
+        List<Task> dueSoon = tasks.findByActiveTrueAndDeadlineAfterAndDeadlineLessThanEqualOrderByDeadlineAsc(
+                now, now.plusMinutes(60));
+        if (dueSoon.isEmpty())
+            return;
+        List<Student> allStudents = students.findAll();
+        for (Task t : dueSoon) {
+            for (Student s : allStudents) {
                 if (!t.assignedTo(s))
                     continue; // chỉ nhắc bạn nào phải làm nhiệm vụ này
                 TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);

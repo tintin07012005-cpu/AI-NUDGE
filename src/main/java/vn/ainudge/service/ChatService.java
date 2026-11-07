@@ -468,11 +468,16 @@ public class ChatService {
     /** Thanh nhiệm vụ hôm nay hiện cho học sinh. */
     public List<TaskChip> chips(Student s) {
         List<TaskChip> list = new ArrayList<>();
-        for (Task t : todayTasks(s)) {
-            TaskProgress p = progressFor(t, s);
+        List<Task> today = todayTasks(s);
+        java.util.Map<Long, TaskProgress> existing = progressMap(s, today);
+        java.util.Map<Long, List<Long>> imgs = imageIds(today);
+        for (Task t : today) {
+            TaskProgress p = existing.get(t.id);
+            if (p == null)
+                p = progressFor(t, s); // chưa có thì tạo như cũ
             String st = p.confirmed ? "CONFIRMED" : p.status;
             list.add(new TaskChip(Script.label(t), t.deadline.format(DM), Script.timeLeft(t), st,
-                    taskImages.findByTask_IdOrderByIdAsc(t.id).stream().map(i -> i.id).toList()));
+                    imgs.getOrDefault(t.id, List.of())));
         }
         return list;
     }
@@ -1052,10 +1057,33 @@ public class ChatService {
      */
     private List<Task> todayTasks(Student s) {
         List<Task> mine = new ArrayList<>();
-        for (Task t : todayTasks())
+        // Chỉ lấy từ database các nhiệm vụ có thể thuộc về học sinh này, không tải nhiệm vụ của cả trường
+        List<Long> groupIds = s.studyGroups.isEmpty() ? List.of(-1L) : s.studyGroups.stream().map(g -> g.id).toList();
+        Long classId = s.classRoom == null ? -1L : s.classRoom.id;
+        for (Task t : tasks.findForStudentAfter(LocalDate.now().atStartOfDay(), classId, groupIds))
             if (t.visibleTo(s))
                 mine.add(t);
         return mine;
+    }
+
+    /** Một lần truy vấn lấy tiến độ hiện có của học sinh cho nhiều nhiệm vụ. */
+    private java.util.Map<Long, TaskProgress> progressMap(Student s, List<Task> ts) {
+        java.util.Map<Long, TaskProgress> map = new java.util.HashMap<>();
+        if (ts.isEmpty())
+            return map;
+        for (TaskProgress p : progresses.findByStudent_IdAndTask_IdIn(s.id, ts.stream().map(t -> t.id).toList()))
+            map.putIfAbsent(p.task.id, p);
+        return map;
+    }
+
+    /** Một lần truy vấn lấy mã ảnh đề bài của nhiều nhiệm vụ. */
+    private java.util.Map<Long, List<Long>> imageIds(List<Task> ts) {
+        java.util.Map<Long, List<Long>> map = new java.util.HashMap<>();
+        if (ts.isEmpty())
+            return map;
+        for (Object[] row : taskImages.findIdPairsByTaskIds(ts.stream().map(t -> t.id).toList()))
+            map.computeIfAbsent((Long) row[0], k -> new ArrayList<>()).add((Long) row[1]);
+        return map;
     }
 
     private List<TaskProgress> pending(Student s, List<Task> today) {

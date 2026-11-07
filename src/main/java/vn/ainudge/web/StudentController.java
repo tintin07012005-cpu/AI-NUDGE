@@ -149,10 +149,22 @@ public class StudentController {
         LocalDate sunday = monday.plusDays(6);
         List<WeekTask> rows = new java.util.ArrayList<>();
         int completed = 0;
-        for (Task t : tasks.findByActiveTrueAndDeadlineGreaterThanEqualAndDeadlineLessThanOrderByDeadlineAsc(
-                monday.atStartOfDay(), monday.plusDays(7).atStartOfDay())) {
-            if (!t.visibleTo(s)) continue;
-            TaskProgress progress = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
+        // Chỉ lấy nhiệm vụ có thể thuộc về học sinh này, rồi lấy tiến độ và ảnh bằng một truy vấn cho cả tuần
+        List<Long> groupIds = s.studyGroups.isEmpty() ? List.of(-1L) : s.studyGroups.stream().map(g -> g.id).toList();
+        Long classId = s.classRoom == null ? -1L : s.classRoom.id;
+        List<Task> weekTasks = tasks.findForStudentBetween(monday.atStartOfDay(), monday.plusDays(7).atStartOfDay(),
+                classId, groupIds).stream().filter(t -> t.visibleTo(s)).toList();
+        java.util.Map<Long, TaskProgress> progressByTask = new java.util.HashMap<>();
+        java.util.Map<Long, List<Long>> imagesByTask = new java.util.HashMap<>();
+        if (!weekTasks.isEmpty()) {
+            List<Long> ids = weekTasks.stream().map(t -> t.id).toList();
+            for (TaskProgress p : progresses.findByStudent_IdAndTask_IdIn(s.id, ids))
+                progressByTask.putIfAbsent(p.task.id, p);
+            for (Object[] row : taskImages.findIdPairsByTaskIds(ids))
+                imagesByTask.computeIfAbsent((Long) row[0], k -> new java.util.ArrayList<>()).add((Long) row[1]);
+        }
+        for (Task t : weekTasks) {
+            TaskProgress progress = progressByTask.get(t.id);
             String status = progress == null ? "TODO" : progress.confirmed ? "CONFIRMED" : progress.status;
             if (status == null) status = "TODO";
             if ("DONE".equals(status) || "CONFIRMED".equals(status)) completed++;
@@ -165,7 +177,7 @@ public class StudentController {
             };
             rows.add(new WeekTask(t.id, t.subject + " · " + t.title,
                     t.deadline.format(DAY), t.deadline.format(DM), status, label,
-                    t.classNames(), taskImages.findByTask_IdOrderByIdAsc(t.id).stream().map(i -> i.id).toList()));
+                    t.classNames(), imagesByTask.getOrDefault(t.id, List.of())));
         }
         return new WeekPlan(monday.format(DATE), sunday.format(DATE),
                 rows.size(), completed, rows.size() - completed, rows);

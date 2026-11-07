@@ -10,6 +10,7 @@ import java.util.Set;
  * danh sách lớp. Ban cán sự là học sinh có monitor = true.
  */
 @Entity
+@org.hibernate.annotations.BatchSize(size = 50)
 public class Student {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +47,7 @@ public class Student {
 
     /** Nhóm/tổ học sinh tham gia (mỗi nhóm nằm trong một lớp). */
     @ManyToMany(fetch = FetchType.EAGER)
+    @org.hibernate.annotations.BatchSize(size = 50)
     @JoinTable(name = "student_study_group", joinColumns = @JoinColumn(name = "student_id"),
             inverseJoinColumns = @JoinColumn(name = "study_group_id"))
     public Set<StudyGroup> studyGroups = new HashSet<>();

@@ -9,6 +9,7 @@ import java.util.Set;
 
 /** Một nhiệm vụ trong ngày do ban cán sự nhập. */
 @Entity
+@org.hibernate.annotations.BatchSize(size = 50)
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,11 +34,13 @@ public class Task {
      * nhiệm vụ có thể giao cho nhiều lớp.
      */
     @ManyToMany(fetch = FetchType.EAGER)
+    @org.hibernate.annotations.BatchSize(size = 50)
     @JoinTable(name = "task_class", joinColumns = @JoinColumn(name = "task_id"), inverseJoinColumns = @JoinColumn(name = "class_room_id"))
     public Set<ClassRoom> classes = new HashSet<>();
 
     /** Chỉ dùng khi giao riêng cho nhóm/tổ; nếu có nhóm thì không tự động giao cả lớp. */
     @ManyToMany(fetch = FetchType.EAGER)
+    @org.hibernate.annotations.BatchSize(size = 50)
     @JoinTable(name = "task_study_group", joinColumns = @JoinColumn(name = "task_id"),
             inverseJoinColumns = @JoinColumn(name = "study_group_id"))
     public Set<StudyGroup> studyGroups = new HashSet<>();

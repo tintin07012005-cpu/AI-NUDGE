@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 /** Một tổ/nhóm cố định thuộc đúng một lớp. */
 @Entity
+@org.hibernate.annotations.BatchSize(size = 50)
 @Table(name = "study_group", uniqueConstraints = @UniqueConstraint(
         name = "uk_group_class_name", columnNames = {"class_room_id", "name"}))
 public class StudyGroup {

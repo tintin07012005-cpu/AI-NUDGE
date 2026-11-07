@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
  * được xếp lớp.
  */
 @Entity
+@org.hibernate.annotations.BatchSize(size = 50)
 public class ClassRoom {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
