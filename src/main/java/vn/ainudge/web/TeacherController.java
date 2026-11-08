@@ -1,11 +1,14 @@
 package vn.ainudge.web;
 
+import jakarta.servlet.http.HttpSession;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
@@ -142,38 +145,127 @@ public class TeacherController {
     public record StudentGroup(String title, List<StudentRow> rows) {
     }
 
-    @GetMapping
-    public String home(Model model) {
-        LocalDateTime now = LocalDateTime.now();
-        List<Student> allStudents = students.findAll();
-        List<Conversation> allConvs = convs.findAll();
-        List<TaskProgress> allProgress = progresses.findAll();
+    // ====================== BẢNG ĐIỀU KHIỂN (thanh bên trái, mỗi tab tải riêng) ======================
 
-        // Chỉ mục để tra nhanh, thay cho việc duyệt lồng nhau (trang quản trị chậm khi nhiều học sinh/nhiệm vụ)
-        Map<Long, List<TaskProgress>> progressByTask = new HashMap<>();
-        Map<String, TaskProgress> progressByKey = new HashMap<>();
-        for (TaskProgress p : allProgress) {
-            progressByTask.computeIfAbsent(p.task.id, k -> new ArrayList<>()).add(p);
-            progressByKey.putIfAbsent(p.task.id + ":" + p.student.id, p);
+    /** Thẻ lớp trên trang Tổng quan. */
+    public record ClassCard(Long id, String name, long students, long tasks) {
+    }
+
+    /** Thông tin phân trang; base là địa chỉ (đã kèm bộ lọc) để ghép số trang vào cuối. */
+    public record PageInfo(int page, int pages, int total, int from, int to, int size, String base,
+            List<Integer> nums) {
+    }
+
+    private static final List<String> TABS = List.of("overview", "tasks", "students", "classes", "hoan", "security",
+            "data");
+
+    /** Bỏ dấu tiếng Việt và chữ hoa để gõ "toan" vẫn tìm ra "Toán". */
+    private static String fold(String s) {
+        if (s == null)
+            return "";
+        String n = Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return n.replace('đ', 'd').replace('Đ', 'D').toLowerCase(Locale.ROOT);
+    }
+
+    private PageInfo pageInfo(int total, int pageNo, int size, String tab, Long cls, String query) {
+        int pages = Math.max(1, (total + size - 1) / size);
+        int p = Math.min(Math.max(1, pageNo), pages);
+        int from = total == 0 ? 0 : (p - 1) * size + 1;
+        int to = Math.min(total, p * size);
+        StringBuilder b = new StringBuilder("/teacher?tab=").append(tab).append("&size=").append(size);
+        if (cls != null)
+            b.append("&cls=").append(cls);
+        if (!query.isEmpty())
+            b.append("&q=").append(java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8));
+        b.append("&page=");
+        // các số trang cần hiện: đầu, cuối và 2 trang quanh trang hiện tại; số 0 = dấu "…"
+        java.util.TreeSet<Integer> keep = new java.util.TreeSet<>();
+        keep.add(1);
+        keep.add(pages);
+        for (int i = p - 2; i <= p + 2; i++)
+            if (i >= 1 && i <= pages)
+                keep.add(i);
+        List<Integer> nums = new ArrayList<>();
+        int prev = 0;
+        for (int n : keep) {
+            if (prev != 0 && n - prev > 1)
+                nums.add(0);
+            nums.add(n);
+            prev = n;
         }
-        Map<Long, List<Conversation>> convsByStudent = new HashMap<>();
-        for (Conversation cv : allConvs)
-            convsByStudent.computeIfAbsent(cv.student.id, k -> new ArrayList<>()).add(cv);
-        convsByStudent.values().forEach(
-                list -> list.sort(Comparator.comparing((Conversation cv) -> cv.startedAt).reversed()));
-        Map<Long, List<Long>> imageIdsByTask = new HashMap<>(); // một lần truy vấn thay cho mỗi nhiệm vụ một lần
-        for (vn.ainudge.model.TaskImage ti : taskImages.findAll().stream()
-                .sorted(Comparator.comparing((vn.ainudge.model.TaskImage x) -> x.id)).toList())
-            imageIdsByTask.computeIfAbsent(ti.task.id, k -> new ArrayList<>()).add(ti.id);
-        Map<Long, Student> studentById = new HashMap<>();
-        for (Student sd : allStudents)
-            studentById.put(sd.id, sd);
+        return new PageInfo(p, pages, total, from, to, size, b.toString(), nums);
+    }
 
-        // ----- bảng nhiệm vụ -----
-        List<TaskRow> taskRows = new ArrayList<>();
-        for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
+    @GetMapping
+    public String home(@RequestParam(required = false) String tab, @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Long cls, @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer size, HttpSession session, Model model) {
+        // Mở trang không kèm tham số (ví dụ sau khi bấm Lưu/Xóa) thì quay lại đúng tab, trang và bộ lọc đang xem
+        if (tab == null && page == null && cls == null && q == null && size == null) {
+            tab = (String) session.getAttribute("tv.tab");
+            page = (Integer) session.getAttribute("tv.page");
+            cls = (Long) session.getAttribute("tv.cls");
+            q = (String) session.getAttribute("tv.q");
+            size = (Integer) session.getAttribute("tv.size");
+        }
+        if (tab == null || !TABS.contains(tab))
+            tab = "overview";
+        String query = q == null ? "" : q.trim();
+        if (query.length() > 60)
+            query = query.substring(0, 60);
+        int pageSize = (size != null && (size == 10 || size == 20 || size == 50)) ? size
+                : ("tasks".equals(tab) ? 10 : 20);
+        int pageNo = page == null || page < 1 ? 1 : page;
+        session.setAttribute("tv.tab", tab);
+        session.setAttribute("tv.page", pageNo);
+        session.setAttribute("tv.cls", cls);
+        session.setAttribute("tv.q", query);
+        session.setAttribute("tv.size", pageSize);
+
+        model.addAttribute("tab", tab);
+        model.addAttribute("title", switch (tab) {
+            case "tasks" -> "Nhiệm vụ";
+            case "students" -> "Học sinh";
+            case "classes" -> "Lớp và tổ / nhóm";
+            case "hoan" -> "Hoãn việc và hỗ trợ";
+            case "security" -> "Bảo mật tài khoản";
+            case "data" -> "Dữ liệu và xuất file";
+            default -> "Tổng quan";
+        });
+        model.addAttribute("cls", cls);
+        model.addAttribute("q", query);
+        // số liệu nhỏ hiện trên thanh bên trái (đều là truy vấn đếm, rất nhẹ)
+        model.addAttribute("total", students.count());
+        model.addAttribute("taskCount", tasks.countByActiveTrue());
+        model.addAttribute("helpCount", progresses.countByNeedHelpTrue());
+
+        switch (tab) {
+            case "overview" -> overviewTab(model);
+            case "tasks" -> tasksTab(model, cls, query, pageNo, pageSize);
+            case "students" -> studentsTab(model, cls, query, pageNo, pageSize);
+            case "classes" -> classesTab(model);
+            case "hoan" -> hoanTab(model);
+            default -> {
+            }
+        }
+        return "teacher";
+    }
+
+    /** Tạo các dòng nhiệm vụ cho một danh sách (tiến độ và ảnh lấy bằng 2 truy vấn chung). */
+    private List<TaskRow> taskRowsFor(List<Task> list, List<Student> allStudents) {
+        List<Long> ids = list.stream().map(t -> t.id).toList();
+        Map<Long, List<TaskProgress>> progByTask = new HashMap<>();
+        Map<Long, List<Long>> imgByTask = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (TaskProgress p : progresses.findByTask_IdIn(ids))
+                progByTask.computeIfAbsent(p.task.id, k -> new ArrayList<>()).add(p);
+            for (Object[] pr : taskImages.findIdPairsByTaskIds(ids))
+                imgByTask.computeIfAbsent((Long) pr[0], k -> new ArrayList<>()).add((Long) pr[1]);
+        }
+        List<TaskRow> out = new ArrayList<>();
+        for (Task t : list) {
             int st = 0, dn = 0, cf = 0;
-            for (TaskProgress p : progressByTask.getOrDefault(t.id, List.of())) {
+            for (TaskProgress p : progByTask.getOrDefault(t.id, List.of())) {
                 if (!t.assignedTo(p.student))
                     continue;
                 if (p.startedAt != null)
@@ -183,26 +275,88 @@ public class TeacherController {
                 if (p.confirmed)
                     cf++;
             }
-            taskRows.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
+            out.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
                     t.createdBy == null ? "—" : t.createdBy.name,
                     (int) allStudents.stream().filter(t::assignedTo).count(), st, dn, cf,
-                    imageIdsByTask.getOrDefault(t.id, List.of()),
-                    t.classNames(), t.classIds(), t.groupIds()));
+                    imgByTask.getOrDefault(t.id, List.of()), t.classNames(), t.classIds(), t.groupIds()));
         }
+        return out;
+    }
 
-        // ----- bảng học sinh -----
-        List<StudentRow> rows = new ArrayList<>();
-        int todayCount = 0;
+    // ----- Tab Tổng quan: chỉ vài số đếm và 6 nhiệm vụ mới nhất -----
+    private void overviewTab(Model model) {
+        List<Student> allStudents = students.findAll();
+        List<Task> active = tasks.findByActiveTrueOrderByDeadlineDesc();
+        model.addAttribute("today", convs.countStudentsStartedSince(LocalDate.now().atStartOfDay()));
+        model.addAttribute("confirmedTotal", progresses.countByConfirmedTrue());
+        model.addAttribute("recentTasks", taskRowsFor(active.stream().limit(6).toList(), allStudents));
+        List<ClassCard> cards = new ArrayList<>();
+        for (ClassRoom c : classRooms.findAllByOrderByNameAsc())
+            cards.add(new ClassCard(c.id, c.name, allStudents.stream().filter(x -> x.isMemberOf(c.id)).count(),
+                    active.stream().filter(t -> t.classIds().contains(c.id)).count()));
+        model.addAttribute("classCards", cards);
+        model.addAttribute("noClassCount", allStudents.stream().filter(x -> x.joinedClasses().isEmpty()).count());
+    }
+
+    // ----- Tab Nhiệm vụ: lọc theo lớp, tìm theo tên, phân trang -----
+    private void tasksTab(Model model, Long cls, String query, int pageNo, int pageSize) {
+        List<Student> allStudents = students.findAll();
+        String needle = fold(query);
+        List<Task> filtered = new ArrayList<>();
+        for (Task t : tasks.findByActiveTrueOrderByDeadlineDesc()) {
+            if (cls != null && (cls == 0L ? !t.classIds().isEmpty() : !t.classIds().contains(cls)))
+                continue;
+            if (!needle.isEmpty() && !fold(Script.label(t)).contains(needle))
+                continue;
+            filtered.add(t);
+        }
+        PageInfo pi = pageInfo(filtered.size(), pageNo, pageSize, "tasks", cls, query);
+        List<Task> slice = filtered.subList(Math.max(0, pi.from() - 1), pi.to());
+        model.addAttribute("taskRows", taskRowsFor(slice, allStudents));
+        model.addAttribute("pg", pi);
+        model.addAttribute("classes", classRooms.findAllByOrderByNameAsc());
+        model.addAttribute("groups", groups.findAll());
+    }
+
+    // ----- Tab Học sinh: lọc theo lớp, tìm theo tên, phân trang; chỉ tính số liệu cho học sinh của trang này -----
+    private void studentsTab(Model model, Long cls, String query, int pageNo, int pageSize) {
+        LocalDateTime now = LocalDateTime.now();
+        String needle = fold(query);
+        List<Student> filtered = new ArrayList<>();
+        for (Student s : students.findAll()) {
+            if (cls != null && (cls == 0L ? !s.joinedClasses().isEmpty() : !s.isMemberOf(cls)))
+                continue;
+            if (!needle.isEmpty() && !fold(s.name).contains(needle))
+                continue;
+            filtered.add(s);
+        }
+        filtered.sort(Comparator.comparing((Student s) -> s.name, String.CASE_INSENSITIVE_ORDER));
+        PageInfo pi = pageInfo(filtered.size(), pageNo, pageSize, "students", cls, query);
+        List<Student> slice = filtered.subList(Math.max(0, pi.from() - 1), pi.to());
+        List<Long> ids = slice.stream().map(s -> s.id).toList();
+
+        Map<Long, List<TaskProgress>> progByStudent = new HashMap<>();
+        Map<Long, Object[]> convInfo = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (TaskProgress p : progresses.findByStudent_IdIn(ids))
+                progByStudent.computeIfAbsent(p.student.id, k -> new ArrayList<>()).add(p);
+            for (Object[] r : convs.summarizeByStudents(ids))
+                convInfo.put((Long) r[0], r);
+        }
         List<Task> activeTasks = tasks.findByActiveTrueOrderByDeadlineDesc();
-        for (Student s : allStudents) {
-            List<Conversation> mine = convsByStudent.getOrDefault(s.id, List.of());
-            if (!mine.isEmpty() && mine.get(0).startedAt.toLocalDate().equals(LocalDate.now()))
-                todayCount++;
+        List<StudentRow> rows = new ArrayList<>();
+        Map<Long, String> passwords = new HashMap<>();
+        Map<Long, List<Long>> studentClassIds = new HashMap<>();
+        Map<Long, List<Long>> studentGroupIds = new HashMap<>();
+        for (Student s : slice) {
+            Map<Long, TaskProgress> byTask = new HashMap<>();
+            for (TaskProgress p : progByStudent.getOrDefault(s.id, List.of()))
+                byTask.putIfAbsent(p.task.id, p);
             int started = 0, done = 0, confirmed = 0, early = 0, onTime = 0, late = 0, missing = 0;
             for (Task t : activeTasks) {
                 if (!t.assignedTo(s))
                     continue; // nhiệm vụ của lớp khác thì không tính cho em này
-                TaskProgress p = progressByKey.get(t.id + ":" + s.id);
+                TaskProgress p = byTask.get(t.id);
                 if (p != null) {
                     if (p.startedAt != null)
                         started++;
@@ -220,22 +374,59 @@ public class TeacherController {
                     }
                 }
             }
-            rows.add(new StudentRow(s.id, s.name, s.monitor, mine.size(),
-                    mine.isEmpty() ? "—" : mine.get(0).lastActivity.format(DT),
-                    started, done, confirmed, early, onTime, late, missing,
+            Object[] ci = convInfo.get(s.id);
+            int sessions = ci == null ? 0 : ((Number) ci[1]).intValue();
+            String last = ci == null || ci[2] == null ? "—" : ((LocalDateTime) ci[2]).format(DT);
+            rows.add(new StudentRow(s.id, s.name, s.monitor, sessions, last, started, done, confirmed,
+                    early, onTime, late, missing,
                     s.classRoom == null ? null : s.classRoom.id, s.classRoom == null ? "—" : s.classRoom.name));
+            passwords.put(s.id, s.password == null ? "" : s.password);
+            studentClassIds.put(s.id, s.joinedClasses().stream().map(c -> c.id).toList());
+            studentGroupIds.put(s.id, s.studyGroups.stream().map(g -> g.id).toList());
         }
-        rows.sort(Comparator.comparing(StudentRow::name, String.CASE_INSENSITIVE_ORDER));
+        Map<Long, List<StudyGroup>> groupsByClass = new HashMap<>();
+        for (StudyGroup grp : groups.findAll())
+            groupsByClass.computeIfAbsent(grp.classRoom.id, k -> new ArrayList<>()).add(grp);
+        groupsByClass.values().forEach(l -> l.sort(
+                Comparator.comparing((StudyGroup x) -> x.name, String.CASE_INSENSITIVE_ORDER)));
+        model.addAttribute("rows", rows);
+        model.addAttribute("pg", pi);
+        model.addAttribute("passwords", passwords);
+        model.addAttribute("studentClassIds", studentClassIds);
+        model.addAttribute("studentGroupIds", studentGroupIds);
+        model.addAttribute("groupsByClass", groupsByClass);
+        model.addAttribute("classes", classRooms.findAllByOrderByNameAsc());
+    }
 
-        // ----- thống kê hoãn việc: lý do, khung giờ, bạn hay hoãn, bạn xin giúp đỡ
-        // -----
+    // ----- Tab Lớp và tổ / nhóm -----
+    private void classesTab(Model model) {
+        List<Student> allStudents = students.findAll();
+        List<ClassRoom> classList = classRooms.findAllByOrderByNameAsc();
+        List<ClassRow> classRows = new ArrayList<>();
+        for (ClassRoom c : classList)
+            classRows.add(new ClassRow(c.id, c.name, allStudents.stream().filter(x -> x.isMemberOf(c.id)).count()));
+        List<StudyGroup> allGroups = groups.findAll();
+        Map<Long, List<Student>> groupMembers = new HashMap<>();
+        for (StudyGroup grp : allGroups)
+            groupMembers.put(grp.id, allStudents.stream()
+                    .filter(st -> st.studyGroups.stream().anyMatch(x -> x.id.equals(grp.id)))
+                    .sorted(Comparator.comparing((Student st) -> st.name, String.CASE_INSENSITIVE_ORDER)).toList());
+        model.addAttribute("classes", classList);
+        model.addAttribute("classRows", classRows);
+        model.addAttribute("groups", allGroups);
+        model.addAttribute("groupMembers", groupMembers);
+    }
+
+    // ----- Tab Hoãn việc và hỗ trợ (cần đọc mọi tiến độ nên chỉ tải khi mở tab này) -----
+    private void hoanTab(Model model) {
+        List<TaskProgress> allProgress = progresses.findAll();
         Map<String, Long> reasonCount = new java.util.LinkedHashMap<>();
         for (String code : new String[] { "hard", "tired", "busy", "bored" })
             reasonCount.put(code, 0L);
         Map<String, Long> bandCount = new java.util.LinkedHashMap<>();
         for (String b : new String[] { "Sáng (5–12h)", "Chiều (12–18h)", "Tối (18–22h)", "Khuya (22–5h)" })
             bandCount.put(b, 0L);
-        Map<Long, int[]> perStudent = new HashMap<>(); // id -> {tổng lần hoãn}
+        Map<Long, int[]> perStudent = new HashMap<>();
         Map<Long, String> studentName = new HashMap<>();
         Map<Long, String> studentClass = new HashMap<>();
         Map<Long, Map<String, Integer>> studentReasons = new HashMap<>();
@@ -283,71 +474,9 @@ public class TeacherController {
         model.addAttribute("postponeAll", postponeAll);
         model.addAttribute("reasonStats", reasonStats);
         model.addAttribute("bandStats", bandStats);
-        model.addAttribute("statRows", Math.max(1, Math.max(reasonStats.size(), bandStats.size()))); // số dòng của bảng
-                                                                                                     // gộp lý do +
-                                                                                                     // khung giờ
+        model.addAttribute("statRows", Math.max(1, Math.max(reasonStats.size(), bandStats.size())));
         model.addAttribute("postponers", postponers.size() > 10 ? postponers.subList(0, 10) : postponers);
         model.addAttribute("helpReqs", helpReqs);
-
-        Map<Long, String> passwords = new HashMap<>();
-        for (Student s : allStudents)
-            passwords.put(s.id, s.password == null ? "" : s.password);
-        model.addAttribute("passwords", passwords);
-        List<ClassRoom> classList = classRooms.findAllByOrderByNameAsc();
-        List<ClassRow> classRows = new ArrayList<>();
-        for (ClassRoom c : classList)
-            classRows.add(new ClassRow(c.id, c.name,
-                    allStudents.stream().filter(x -> x.isMemberOf(c.id)).count()));
-
-        // ----- nhóm nhiệm vụ và học sinh theo lớp -----
-        List<TaskGroup> taskGroups = new ArrayList<>();
-        for (ClassRoom c : classList)
-            taskGroups.add(new TaskGroup(c.name, taskRows.stream().filter(r -> r.classIds().contains(c.id)).toList()));
-        List<TaskRow> forAll = taskRows.stream().filter(r -> r.classIds().isEmpty()).toList();
-        if (!forAll.isEmpty())
-            taskGroups.add(new TaskGroup("Nhiệm vụ dành cho tất cả các lớp", forAll));
-
-        List<StudentGroup> studentGroups = new ArrayList<>();
-        for (ClassRoom c : classList)
-            studentGroups.add(new StudentGroup(c.name, rows.stream()
-                    .filter(r -> studentById.get(r.id()).isMemberOf(c.id)).toList()));
-        List<StudentRow> noClass = rows.stream().filter(r -> r.classId() == null).toList();
-        if (!noClass.isEmpty())
-            studentGroups.add(new StudentGroup("Chưa có lớp", noClass));
-
-        model.addAttribute("classes", classList);
-        List<StudyGroup> allGroups = groups.findAll();
-        model.addAttribute("groups", allGroups);
-        Map<Long, List<Student>> groupMembers = new HashMap<>();
-        for (StudyGroup grp : allGroups)
-            groupMembers.put(grp.id, allStudents.stream()
-                    .filter(st -> st.studyGroups.stream().anyMatch(x -> x.id.equals(grp.id)))
-                    .sorted(Comparator.comparing((Student st) -> st.name, String.CASE_INSENSITIVE_ORDER)).toList());
-        model.addAttribute("groupMembers", groupMembers);
-        Map<Long, List<StudyGroup>> groupsByClass = new HashMap<>();
-        for (StudyGroup grp : allGroups)
-            groupsByClass.computeIfAbsent(grp.classRoom.id, k -> new java.util.ArrayList<>()).add(grp);
-        groupsByClass.values().forEach(l -> l.sort(
-                Comparator.comparing((StudyGroup x) -> x.name, String.CASE_INSENSITIVE_ORDER)));
-        model.addAttribute("groupsByClass", groupsByClass);
-        Map<Long, List<Long>> studentClassIds = new HashMap<>();
-        Map<Long, List<Long>> studentGroupIds = new HashMap<>();
-        for (Student s : allStudents) {
-            studentClassIds.put(s.id, s.joinedClasses().stream().map(c -> c.id).toList());
-            studentGroupIds.put(s.id, s.studyGroups.stream().map(g -> g.id).toList());
-        }
-        model.addAttribute("studentClassIds", studentClassIds);
-        model.addAttribute("studentGroupIds", studentGroupIds);
-        model.addAttribute("classRows", classRows);
-        model.addAttribute("tasks", taskRows);
-        model.addAttribute("taskGroups", taskGroups);
-        model.addAttribute("studentGroups", studentGroups);
-        model.addAttribute("rows", rows);
-        model.addAttribute("total", allStudents.size());
-        model.addAttribute("today", todayCount);
-        model.addAttribute("taskCount", taskRows.size());
-        model.addAttribute("confirmedTotal", allProgress.stream().filter(p -> p.confirmed).count());
-        return "teacher";
     }
 
     /**

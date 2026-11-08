@@ -11,6 +11,7 @@ import vn.ainudge.model.Task;
 public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByActiveTrueAndDeadlineAfterOrderByDeadlineAsc(LocalDateTime after);
     List<Task> findByActiveTrueOrderByDeadlineDesc();
+    long countByActiveTrue();
 
     /** Nhiệm vụ sắp đến hạn trong một khoảng ngắn (dùng cho bộ nhắc việc, khỏi tải mọi nhiệm vụ từ trước tới nay). */
     List<Task> findByActiveTrueAndDeadlineAfterAndDeadlineLessThanEqualOrderByDeadlineAsc(
