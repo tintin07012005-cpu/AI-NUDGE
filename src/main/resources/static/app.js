@@ -174,7 +174,7 @@ async function refreshTasks() {
   list.forEach(t => {
     const d = document.createElement('span');
     d.className = 'tchip ' + t.status;
-    d.title = 'Hạn nộp ' + t.deadline + ' (' + t.left + ')';
+    d.title = 'Giao ngày ' + t.assigned + ' · Hạn nộp ' + t.deadline + ' (' + t.left + ')';
     d.textContent = (ICON[t.status] || '') + t.label;
     const sm = document.createElement('small');
     sm.textContent = t.left;
@@ -238,14 +238,14 @@ async function refreshWeekPlan() {
     const name = document.createElement('strong');
     name.textContent = t.label;
     const meta = document.createElement('small');
-    meta.textContent = 'Hạn ' + t.deadline + ' · ' + t.audience;
+    meta.textContent = 'Giao ' + t.assigned + ' · Hạn ' + t.deadline + ' · ' + t.audience;
     middle.append(name, meta);
     const status = document.createElement('span');
     status.className = 'week-status ' + (done ? 'done' : t.status.toLowerCase());
     status.textContent = t.statusLabel;
     row.append(check, middle, status);
     row.title = 'Xem chi tiết nhiệm vụ';
-    row.onclick = () => openTask({label:t.label, deadline:t.deadline,
+    row.onclick = () => openTask({label:t.label, assigned:t.assigned, deadline:t.deadline,
       left:t.statusLabel, images:t.images});
     parent.appendChild(row);
   }
@@ -254,7 +254,7 @@ async function refreshWeekPlan() {
 /* ---------- bấm vào ô nhiệm vụ: xem hạn nộp và ảnh đề bài do ban cán sự gửi ---------- */
 async function openTask(t) {
   $('tmTitle').textContent = t.label;
-  $('tmInfo').textContent = 'Hạn nộp ' + t.deadline + ' (' + t.left + ')'
+  $('tmInfo').textContent = 'Giao ngày ' + t.assigned + ' · Hạn nộp ' + t.deadline + ' (' + t.left + ')'
     + (t.images && t.images.length ? ' · Mở ảnh hoặc tệp Word bên dưới.' : ' · Chưa có đề bài đính kèm.');
   const box = $('tmImgs'); box.innerHTML = '';
   $('taskModal').hidden = false;

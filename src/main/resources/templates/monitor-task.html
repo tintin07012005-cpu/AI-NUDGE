@@ -12,7 +12,7 @@
 <main class="wide">
   <section class="panel">
     <h2 th:text="${task}"></h2>
-    <p class="muted">Hạn nộp: <b th:text="${deadline}"></b></p>
+    <p class="muted">Ngày giao: <b th:text="${assigned}"></b> · Hạn nộp: <b th:text="${deadline}"></b></p>
     <div class="thumbs" th:if="${!taskImages.isEmpty()}" style="margin-bottom:10px">
       <a th:each="iid : ${taskImages}" th:href="@{/task-image/{id}/file(id=${iid})}" target="_blank">
         <img loading="lazy" decoding="async" class="thumb" th:src="@{/task-image/{id}/file(id=${iid})}" alt="Ảnh đề bài"></a>

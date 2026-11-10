@@ -120,6 +120,7 @@
             <th>Nhiệm vụ</th>
             <th>Lớp được giao</th>
             <th>Ảnh / Word đính kèm</th>
+            <th>Ngày giao</th>
             <th>Hạn nộp</th>
             <th>Học sinh báo xong</th>
             <th>Đã xác nhận nộp</th>
@@ -142,6 +143,7 @@
                     hidden onchange="if(this.files.length) this.form.submit()"></label>
               </form>
             </td>
+            <td th:text="${r.assigned()}"></td>
             <td th:text="${r.deadline()}"></td>
             <td th:text="${r.done()} + ' / ' + ${r.total()}"></td>
             <td th:text="${r.confirmed()} + ' / ' + ${r.total()}"></td>

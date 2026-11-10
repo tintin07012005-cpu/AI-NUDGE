@@ -275,7 +275,7 @@ public class TeacherController {
                 if (p.confirmed)
                     cf++;
             }
-            out.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
+            out.add(new TaskRow(t.id, Script.label(t), t.assignedDate(), t.deadline.format(DM),
                     t.createdBy == null ? "—" : t.createdBy.name,
                     (int) allStudents.stream().filter(t::assignedTo).count(), st, dn, cf,
                     imgByTask.getOrDefault(t.id, List.of()), t.classNames(), t.classIds(), t.groupIds()));
@@ -495,7 +495,7 @@ public class TeacherController {
             TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
             String plan = p == null || p.plannedLabel == null ? "—"
                     : p.plannedLabel + (p.place == null ? "" : " · " + p.place);
-            pv.add(new ProgressView(Script.label(t), t.deadline.format(DM), Eval.statusLabel(p), plan,
+            pv.add(new ProgressView(Script.label(t), t.assignedDate(), t.deadline.format(DM), Eval.statusLabel(p), plan,
                     p == null || p.barrier == null ? "—" : p.barrier,
                     p == null || Script.postponeText(p).isEmpty() ? "—" : Script.postponeText(p),
                     p == null || p.proof == null ? "—" : p.proof,
@@ -696,7 +696,7 @@ public class TeacherController {
         return xlsx("Câu trả lời", "tra-loi-hoc-sinh.xlsx", rows);
     }
 
-    private static final String[] PROGRESS_HEAD = { "Học sinh", "Nhiệm vụ", "Hạn nộp", "Trạng thái", "Giờ hẹn",
+    private static final String[] PROGRESS_HEAD = { "Học sinh", "Nhiệm vụ", "Ngày giao", "Hạn nộp", "Trạng thái", "Giờ hẹn",
             "Điều khiến chưa bắt đầu", "Số lần hoãn", "Lý do hoãn / cần hỗ trợ", "Bắt đầu lúc", "Báo xong lúc",
             "Học sinh kể", "Học sinh báo đã nộp",
             "Số ảnh minh chứng", "Ban cán sự xác nhận", "Kết quả" };
@@ -713,7 +713,7 @@ public class TeacherController {
                 if (!t.assignedTo(s))
                     continue;
                 TaskProgress p = progresses.findByTask_IdAndStudent_Id(t.id, s.id).orElse(null);
-                rows.add(row(s.name, Script.label(t), t.deadline.format(DT), Eval.statusLabel(p),
+                rows.add(row(s.name, Script.label(t), t.createdAt == null ? "" : t.createdAt.format(DT), t.deadline.format(DT), Eval.statusLabel(p),
                         p == null ? "" : p.plannedLabel,
                         p == null ? "" : p.barrier,
                         String.valueOf(p == null ? 0 : p.postponeTotal),

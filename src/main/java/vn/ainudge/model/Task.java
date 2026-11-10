@@ -45,6 +45,11 @@ public class Task {
             inverseJoinColumns = @JoinColumn(name = "study_group_id"))
     public Set<StudyGroup> studyGroups = new HashSet<>();
 
+    /** Ngày giao bài tập (dd/MM) để hiển thị; nhiệm vụ cũ chưa có ngày thì hiện "—". */
+    public String assignedDate() {
+        return createdAt == null ? "—" : createdAt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM"));
+    }
+
     /** Học sinh này có phải làm nhiệm vụ này không? (trong bất kỳ lớp em tham gia). */
     public boolean assignedTo(Student s) {
         if (s == null) return false;

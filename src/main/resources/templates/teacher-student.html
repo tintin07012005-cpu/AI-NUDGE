@@ -21,10 +21,11 @@
     <p class="empty" th:if="${progress.isEmpty()}">Chưa có nhiệm vụ nào.</p>
     <div class="scroll-x" th:unless="${progress.isEmpty()}">
     <table>
-      <tr><th>Nhiệm vụ</th><th>Hạn nộp</th><th>Trạng thái</th><th>Giờ hẹn / nơi làm</th><th>Điều khiến chưa bắt đầu</th><th>Lý do hoãn</th>
+      <tr><th>Nhiệm vụ</th><th>Ngày giao</th><th>Hạn nộp</th><th>Trạng thái</th><th>Giờ hẹn / nơi làm</th><th>Điều khiến chưa bắt đầu</th><th>Lý do hoãn</th>
           <th>Em ấy kể đã làm</th><th>Báo đã nộp</th><th>Ảnh minh chứng</th><th>BCS xác nhận</th><th>Kết quả</th></tr>
       <tr th:each="p : ${progress}">
         <td th:text="${p.task()}"></td>
+        <td th:text="${p.assigned()}"></td>
         <td th:text="${p.deadline()}"></td>
         <td th:text="${p.status()}"></td>
         <td th:text="${p.plan()}"></td>

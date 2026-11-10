@@ -59,9 +59,10 @@
           <p class="empty" th:if="${recentTasks.isEmpty()}">Chưa có nhiệm vụ nào. Hãy chỉ định ban cán sự ở tab “Học sinh” để các bạn nhập nhiệm vụ.</p>
           <div class="scroll-x" th:unless="${recentTasks.isEmpty()}">
             <table>
-              <tr><th>Nhiệm vụ</th><th>Hạn nộp</th><th>Lớp được giao</th><th style="min-width:160px">Tiến độ báo xong</th><th>BCS xác nhận</th></tr>
+              <tr><th>Nhiệm vụ</th><th>Ngày giao</th><th>Hạn nộp</th><th>Lớp được giao</th><th style="min-width:160px">Tiến độ báo xong</th><th>BCS xác nhận</th></tr>
               <tr th:each="t : ${recentTasks}">
                 <td th:text="${t.label()}"></td>
+                <td th:text="${t.assigned()}"></td>
                 <td th:text="${t.deadline()}"></td>
                 <td th:text="${t.classes()}"></td>
                 <td>
@@ -117,7 +118,7 @@
           <div class="scroll-x" th:unless="${taskRows.isEmpty()}">
             <table>
               <tr>
-                <th>Nhiệm vụ</th><th>Ảnh đề</th><th>Hạn nộp</th><th>Người nhập</th><th>Lớp được giao</th>
+                <th>Nhiệm vụ</th><th>Ảnh đề</th><th>Ngày giao</th><th>Hạn nộp</th><th>Người nhập</th><th>Lớp được giao</th>
                 <th>Đã bắt đầu</th><th>Báo xong</th><th>BCS xác nhận</th><th></th>
               </tr>
               <tr th:each="t : ${taskRows}">
@@ -128,6 +129,7 @@
                       th:attr="data-full=@{/task-image/{id}/file(id=${iid})}" onerror="this.onerror=null;this.src=this.dataset.full" alt="Ảnh đề bài"></a>
                   <span class="muted" th:if="${t.images().isEmpty()}">—</span>
                 </td>
+                <td th:text="${t.assigned()}"></td>
                 <td th:text="${t.deadline()}"></td>
                 <td th:text="${t.creator()}"></td>
                 <td>

@@ -151,7 +151,7 @@ public class MonitorController {
                 if (p.confirmed)
                     conf++;
             }
-            rows.add(new TaskRow(t.id, Script.label(t), t.deadline.format(DM),
+            rows.add(new TaskRow(t.id, Script.label(t), t.assignedDate(), t.deadline.format(DM),
                     t.createdBy == null ? "—" : t.createdBy.name, total, 0, done, conf,
                     imgByTask.getOrDefault(t.id, List.of()),
                     t.classNames(), t.classIds(), t.groupIds()));
@@ -326,6 +326,7 @@ public class MonitorController {
         }
         rows.sort(Comparator.comparing(MemberRow::name, String.CASE_INSENSITIVE_ORDER));
         model.addAttribute("task", Script.label(t) + " · Lớp: " + t.classNames());
+        model.addAttribute("assigned", t.assignedDate());
         model.addAttribute("deadline", t.deadline.format(DM));
         model.addAttribute("taskId", t.id);
         model.addAttribute("taskImages", imageIds(t.id));

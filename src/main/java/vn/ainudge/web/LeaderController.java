@@ -57,7 +57,7 @@ public class LeaderController {
     }
 
     /** Một dòng trong danh sách nhiệm vụ của tổ. */
-    public record LeaderTask(Long id, String label, String deadline, int total, int done, int confirmed) {}
+    public record LeaderTask(Long id, String label, String assigned, String deadline, int total, int done, int confirmed) {}
 
     private Student me(HttpSession session) {
         Object id = session.getAttribute("studentId");
@@ -103,7 +103,7 @@ public class LeaderController {
                 if (p != null && p.confirmed)
                     conf++;
             }
-            rows.add(new LeaderTask(t.id, Script.label(t), t.deadline.format(DM), target.size(), done, conf));
+            rows.add(new LeaderTask(t.id, Script.label(t), t.assignedDate(), t.deadline.format(DM), target.size(), done, conf));
         }
         model.addAttribute("name", leader.name);
         model.addAttribute("groupNames", String.join(", ", led.stream()
@@ -139,6 +139,7 @@ public class LeaderController {
         }
         rows.sort(Comparator.comparing(MemberRow::name, String.CASE_INSENSITIVE_ORDER));
         model.addAttribute("task", Script.label(t) + " · Lớp: " + t.classNames());
+        model.addAttribute("assigned", t.assignedDate());
         model.addAttribute("deadline", t.deadline.format(DM));
         model.addAttribute("taskId", t.id);
         model.addAttribute("taskImages", taskImages.findByTask_IdOrderByIdAsc(t.id).stream().map(i -> i.id).toList());

@@ -176,7 +176,7 @@ public class StudentController {
                 default -> "Chưa hoàn thành";
             };
             rows.add(new WeekTask(t.id, t.subject + " · " + t.title,
-                    t.deadline.format(DAY), t.deadline.format(DM), status, label,
+                    t.deadline.format(DAY), t.assignedDate(), t.deadline.format(DM), status, label,
                     t.classNames(), imagesByTask.getOrDefault(t.id, List.of())));
         }
         return new WeekPlan(monday.format(DATE), sunday.format(DATE),

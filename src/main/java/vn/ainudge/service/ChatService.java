@@ -476,7 +476,7 @@ public class ChatService {
             if (p == null)
                 p = progressFor(t, s); // chưa có thì tạo như cũ
             String st = p.confirmed ? "CONFIRMED" : p.status;
-            list.add(new TaskChip(Script.label(t), t.deadline.format(DM), Script.timeLeft(t), st,
+            list.add(new TaskChip(Script.label(t), t.assignedDate(), t.deadline.format(DM), Script.timeLeft(t), st,
                     imgs.getOrDefault(t.id, List.of())));
         }
         return list;
