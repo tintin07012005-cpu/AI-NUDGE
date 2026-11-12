@@ -199,10 +199,11 @@ public class StudentController {
     @ResponseBody
     public Reply answer(@RequestParam String value,
             @RequestParam(required = false) String label,
+            @RequestParam(defaultValue = "false") boolean aiConsent,
             HttpSession session) {
         Student s = current(session);
         synchronized (lockOf(s)) {
-            return chat.answer(s, value, label);
+            return chat.answer(s, value, label, aiConsent);
         }
     }
 

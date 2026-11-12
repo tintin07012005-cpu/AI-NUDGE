@@ -50,13 +50,15 @@ public class ChatService {
     private final TaskProgressRepository progresses;
     private final ProofService proof;
     private final TaskImageRepository taskImages;
+    private final AiBarrierClassifier aiBarrierClassifier;
 
     @Value("${ainudge.demo:false}")
     private boolean demo;
 
     public ChatService(ConversationRepository convs, ChatLogRepository logs,
             TaskRepository tasks, TaskProgressRepository progresses, ProofService proof,
-            TaskImageRepository taskImages) {
+            TaskImageRepository taskImages, AiBarrierClassifier aiBarrierClassifier) {
+        this.aiBarrierClassifier = aiBarrierClassifier;
         this.taskImages = taskImages;
         this.convs = convs;
         this.logs = logs;
@@ -96,7 +98,7 @@ public class ChatService {
     // ============================================================
     // Học sinh trả lời (bấm nút, chọn giờ hoặc gõ chữ)
     // ============================================================
-    public Reply answer(Student s, String value, String label) {
+    public Reply answer(Student s, String value, String label, boolean aiConsent) {
         Conversation c = current(s);
         if (c == null || "END".equals(c.step))
             return open(s, true);
@@ -141,7 +143,19 @@ public class ChatService {
                     bot(c, out, "Bạn gõ thêm vài chữ giúp mình nhé.", "normal");
                 } else {
                     p.barrier = txt;
-                    bot(c, out, Script.barrierNudge("other"), "nudge");
+                    // AI chỉ phân loại khi HS chủ động đồng ý, tính năng đã bật và API thành công.
+                    // Nếu không, cú hích theo quy tắc cũ vẫn hoạt động như trước.
+                    java.util.Optional<String> aiType = aiBarrierClassifier.classify(s.id, txt, aiConsent);
+                    if (aiType.isPresent()) {
+                        String nudgeCode = aiType.get();
+                        bot(c, out, "🤖 AI đã phân tích khó khăn và chọn cú hích " + nudgeCode
+                                + ": " + aiMessage(nudgeCode), "nudge");
+                    } else {
+                        if (aiConsent) {
+                            bot(c, out, "AI chưa khả dụng trong lượt này; mình dùng gợi ý theo quy tắc nhé.", "normal");
+                        }
+                        bot(c, out, Script.barrierNudge("other"), "nudge");
+                    }
                     ask(c, out, "PLACE");
                 }
             }
@@ -611,6 +625,18 @@ public class ChatService {
         }
     }
 
+    /** Lời nhắc do nhóm duyệt; mô hình AI không trực tiếp tạo văn bản cho học sinh. */
+    private static String aiMessage(String code) {
+        return switch (code) {
+            case "N1" -> "Mình cùng xem lại nhiệm vụ hôm nay nhé. Bạn chọn một việc nhỏ trước.";
+            case "N2" -> "Bạn muốn học ở đâu và bắt đầu lúc mấy giờ? Chọn một mốc dễ thực hiện nhé.";
+            case "N3" -> "Bài khó cũng không sao. Hãy thử đọc đề và làm một bước nhỏ trong 5 phút.";
+            case "N4" -> "Bạn đã cố gắng rồi. Thử quay lại với phần đang làm dở trong 2 phút nhé.";
+            case "N5" -> "Bạn xem lại hạn nộp và chọn một phần quan trọng để hoàn thành trước nhé.";
+            default -> "Bạn thử bắt đầu từ một bước nhỏ nhé.";
+        };
+    }
+
     private String clean(String v, int max) {
         String x = v == null ? "" : v.trim().replaceAll("\\s+", " ");
         return x.length() > max ? x.substring(0, max) : x;
@@ -1035,7 +1061,8 @@ public class ChatService {
     private String input(Conversation c) {
         if ("TIME".equals(c.step) || "PAUSE_TIME".equals(c.step))
             return "time";
-        if ("PROOF".equals(c.step) || "PLACE_OTHER".equals(c.step) || "BARRIER_OTHER".equals(c.step)
+        if ("BARRIER_OTHER".equals(c.step)) return "ai-text";
+        if ("PROOF".equals(c.step) || "PLACE_OTHER".equals(c.step)
                 || "POSTPONE_COMMIT".equals(c.step) || "POSTPONE_OTHER".equals(c.step) || "PAUSE_OTHER".equals(c.step))
             return "text";
         if ("PHOTO".equals(c.step))

@@ -114,6 +114,13 @@
         </div>
         <div id="photoPrev" class="thumbs"></div>
       </div>
+      <div id="aiConsentRow" hidden style="margin:8px 2px 4px;font-size:12px;line-height:1.4">
+        <label style="display:flex;align-items:flex-start;gap:7px">
+          <input type="checkbox" id="aiConsent" style="margin-top:2px">
+          <span>Cho phép mô hình AI phân loại <b>mô tả khó khăn</b> bạn sắp nhập (ứng dụng không tự đính kèm tên hay mã học sinh).</span>
+        </label>
+        <small class="muted">Không nhập tên, số điện thoại hay thông tin riêng tư. Không tích nếu chưa có sự đồng ý cần thiết của phụ huynh/nhà trường. Bỏ tích vẫn dùng được cú hích cũ.</small>
+      </div>
       <div id="textRow" hidden>
         <input type="text" id="textInput" maxlength="300" placeholder="Gõ vài chữ rồi bấm Gửi...">
         <button class="btn primary" id="textOk">Gửi</button>
@@ -138,7 +145,7 @@
       <div class="imgs" id="tmImgs"></div>
     </div>
   </div>
-  <script src="/app.js?v=5"></script>
+  <script src="/app.js?v=6"></script>
 </body>
 
 </html>

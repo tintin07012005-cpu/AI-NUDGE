@@ -134,10 +134,13 @@ function render(reply) {
     for (const m of reply.messages || []) await botSay(m);
     setOpts(reply.options || []);
     timeRow.hidden = reply.input !== 'time';
-    textRow.hidden = reply.input !== 'text';
+    const aiInput = reply.input === 'ai-text';
+    textRow.hidden = reply.input !== 'text' && !aiInput;
+    $('aiConsentRow').hidden = !aiInput;
+    if (aiInput) $('aiConsent').checked = false;
     photoRow.hidden = reply.input !== 'photo';
     if (!textRow.hidden) {
-      $('textInput').placeholder = reply.input === 'text' ? 'Gõ vài chữ rồi bấm Gửi...' : '';
+      $('textInput').placeholder = aiInput ? 'Ví dụ: Bài nhiều quá, em chưa biết bắt đầu...' : 'Gõ vài chữ rồi bấm Gửi...';
       $('textInput').focus();
     }
     refreshTasks();
@@ -146,10 +149,11 @@ function render(reply) {
 }
 
 /* ---------- học sinh trả lời ---------- */
-async function choose(label, value) {
+async function choose(label, value, aiConsent = false) {
   setOpts([]); timeRow.hidden = true; textRow.hidden = true; photoRow.hidden = true;
+  $('aiConsentRow').hidden = true;
   addMsg({sender: 'STUDENT', text: label, kind: 'normal'});
-  render(await api('/student/api/answer', {value, label}));
+  render(await api('/student/api/answer', {value, label, aiConsent: String(aiConsent)}));
 }
 $('timeOk').onclick = () => {
   const v = $('timeInput').value;
@@ -158,8 +162,9 @@ $('timeOk').onclick = () => {
 function sendText() {
   const v = $('textInput').value.trim();
   if (!v) return;
+  const aiConsent = !$('aiConsentRow').hidden && $('aiConsent').checked;
   $('textInput').value = '';
-  choose(v, v);
+  choose(v, v, aiConsent);
 }
 $('textOk').onclick = sendText;
 $('textInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendText(); });
