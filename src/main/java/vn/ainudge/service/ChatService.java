@@ -148,8 +148,7 @@ public class ChatService {
                     java.util.Optional<String> aiType = aiBarrierClassifier.classify(s.id, txt, aiConsent);
                     if (aiType.isPresent()) {
                         String nudgeCode = aiType.get();
-                        bot(c, out, "🤖 AI đã phân tích khó khăn và chọn cú hích " + nudgeCode
-                                + ": " + aiMessage(nudgeCode), "nudge");
+                        bot(c, out, "💡 " + aiMessage(nudgeCode), "nudge");
                     } else {
                         if (aiConsent) {
                             bot(c, out, "AI chưa khả dụng trong lượt này; mình dùng gợi ý theo quy tắc nhé.", "normal");
@@ -220,7 +219,7 @@ public class ChatService {
                     p.lastPostponeReason = "other";
                     addPostponeLog(p, "other");
                     addOtherReason(p, clean(label, 120));
-                    bot(c, out, Script.postponeReply("other", p), "nudge");
+                    sendAiOrFallback(c, out, s, label, aiConsent, Script.postponeReply("other", p));
                     bot(c, out, "Còn " + Math.max(0, MAX_DELAY - delays(p))
                             + " lượt. Chọn giờ mới sẽ tính 1 lượt.", "normal");
                     c.step = "POSTPONE_PLAN";
@@ -306,7 +305,7 @@ public class ChatService {
                     p.lastPostponeReason = "other";
                     addPostponeLog(p, "other");
                     addOtherReason(p, clean(label, 120));
-                    bot(c, out, Script.pauseReply("other"), "nudge");
+                    sendAiOrFallback(c, out, s, label, aiConsent, Script.pauseReply("other"));
                     bot(c, out, "Bạn còn " + Math.max(0, MAX_DELAY - delays(p))
                             + " lượt. Chọn giờ nghỉ mới sẽ tính 1 lượt.", "normal");
                     ask(c, out, "PAUSE");
@@ -622,6 +621,21 @@ public class ChatService {
         } else {
             bot(c, out, Script.waiting(), "normal");
             c.step = "WAIT";
+        }
+    }
+
+    /** AI cho mọi ô "Lý do khác"; giữ nguyên nghiệp vụ hoãn/nghỉ nếu API lỗi. */
+    private void sendAiOrFallback(Conversation c, List<Msg> out, Student student,
+            String text, boolean aiConsent, String fallback) {
+        java.util.Optional<String> code = aiBarrierClassifier.classify(
+                student.id, clean(text, 100), aiConsent);
+        if (code.isPresent()) {
+            bot(c, out, "💡 " + aiMessage(code.get()), "nudge");
+        } else {
+            if (aiConsent) {
+                bot(c, out, "AI chưa khả dụng trong lượt này; mình dùng gợi ý có sẵn nhé.", "normal");
+            }
+            bot(c, out, fallback, "nudge");
         }
     }
 
@@ -1061,7 +1075,8 @@ public class ChatService {
     private String input(Conversation c) {
         if ("TIME".equals(c.step) || "PAUSE_TIME".equals(c.step))
             return "time";
-        if ("BARRIER_OTHER".equals(c.step)) return "ai-text";
+        if ("BARRIER_OTHER".equals(c.step) || "POSTPONE_OTHER".equals(c.step)
+                || "PAUSE_OTHER".equals(c.step)) return "ai-text";
         if ("PROOF".equals(c.step) || "PLACE_OTHER".equals(c.step)
                 || "POSTPONE_COMMIT".equals(c.step) || "POSTPONE_OTHER".equals(c.step) || "PAUSE_OTHER".equals(c.step))
             return "text";
